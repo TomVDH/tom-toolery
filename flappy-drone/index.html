@@ -134,7 +134,7 @@ const DIED_TOTAL = DEATH_FLASH_DUR + DIED_FADE_IN + DIED_HOLD + DIED_FADE_OUT;
 const SCORE_DELAY = 20;           // pause before score screen
 
 // --- Ready countdown ---
-const READY_DURATION = 90; // ~1.5s at 60fps
+const READY_DURATION = 240; // ~4s at 60fps -- proper warmup
 
 // --- State ---
 // States: menu, ready, play, dying, dead
@@ -568,9 +568,8 @@ function drawReadySequence() {
   // Draw drone with flickering outline
   drawDrone(drone.x, drone.y, drone.angle, drone.propPhase);
 
-  // Outline blink: starts fast (period=4), eases to slow (period=30), then solid
-  // Ease-out: blink period increases as t approaches 1
-  const blinkPeriod = 4 + t * t * 26; // 4 -> 30 frames
+  // Outline blink: starts very fast (period=3), eases to slow (period=40), then solid
+  const blinkPeriod = 3 + t * t * t * 37; // cubic ease -- lingers fast, slows gradually
   const blinkOn = (readyTimer % Math.round(blinkPeriod)) < (blinkPeriod * 0.5);
 
   if (blinkOn || t > 0.92) {
@@ -596,22 +595,22 @@ function drawReadySequence() {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  if (t < 0.5) {
-    // GET READY -- quick fade in
-    ctx.globalAlpha = Math.min(1, readyTimer / 10) * 0.7;
+  if (t < 0.45) {
+    // GET READY -- slow fade in
+    ctx.globalAlpha = Math.min(1, readyTimer / 30) * 0.7;
     ctx.font = '700 18px "Segoe UI", system-ui, sans-serif';
     ctx.fillStyle = '#556';
     ctx.fillText('GET READY', W / 2, H / 2 - 70);
-  } else if (t < 0.78) {
-    // Navigate the Skyline.
-    const fadeT = Math.min(1, (t - 0.5) / 0.06);
+  } else if (t < 0.8) {
+    // Navigate the Skyline. -- gentle fade in
+    const fadeT = Math.min(1, (t - 0.45) / 0.1);
     ctx.globalAlpha = fadeT * 0.8;
     ctx.font = 'italic 16px "Segoe UI", system-ui, sans-serif';
     ctx.fillStyle = '#667';
     ctx.fillText('Navigate the Skyline.', W / 2, H / 2 - 70);
   } else {
     // GO
-    const goT = (t - 0.78) / 0.22;
+    const goT = (t - 0.8) / 0.2;
     ctx.globalAlpha = goT;
     ctx.font = '700 28px "Segoe UI", system-ui, sans-serif';
     ctx.fillStyle = '#00d4ff';
