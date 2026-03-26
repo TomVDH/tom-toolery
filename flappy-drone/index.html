@@ -41,10 +41,21 @@
   }
   .title {
     font-family: 'Courier New', monospace;
-    font-size: 36px; font-weight: 700; letter-spacing: 6px;
+    font-size: 42px; font-weight: 700; letter-spacing: 6px;
     color: transparent;
     -webkit-text-stroke: 1.5px #fff;
     text-shadow: 0 0 30px #00d4ff22;
+    transition: transform 0.05s;
+  }
+  .title:hover {
+    animation: jitter 0.08s infinite;
+  }
+  @keyframes jitter {
+    0% { transform: translate(0, 0); }
+    25% { transform: translate(-1px, 1px); }
+    50% { transform: translate(1px, -1px); }
+    75% { transform: translate(-1px, -1px); }
+    100% { transform: translate(1px, 1px); }
   }
   .slogan {
     font-size: 12px; color: #556; letter-spacing: 2px;
@@ -72,6 +83,11 @@
   .hud.show { opacity: 1; }
 
   /* Score screen */
+  .score-screen.show {
+    background: rgba(5, 5, 16, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
   .score-value { font-size: 72px; font-weight: 700; color: #fff; line-height: 1; }
   .score-label {
     font-size: 12px; color: #445; letter-spacing: 3px;
@@ -90,13 +106,12 @@
   <div class="hud" id="hud">0</div>
 
   <div class="screen show" id="menuScreen">
-    <div class="tagline">-- ZENATECH --</div>
     <div class="title">FLAPPY DRONE</div>
     <div class="slogan">Building the drone as we're flying it</div>
     <div class="prompt">Tap or press Space</div>
   </div>
 
-  <div class="screen" id="scoreScreen">
+  <div class="screen score-screen" id="scoreScreen">
     <div class="score-label">Score</div>
     <div class="score-value" id="scoreValue">0</div>
     <div class="score-best" id="scoreBest">Best: 0</div>
@@ -134,7 +149,7 @@ const DIED_TOTAL = DEATH_FLASH_DUR + DIED_FADE_IN + DIED_HOLD + DIED_FADE_OUT;
 const SCORE_DELAY = 20;           // pause before score screen
 
 // --- Ready countdown ---
-const READY_DURATION = 240; // ~4s at 60fps -- proper warmup
+const READY_MS = 5000; // 5 seconds, refresh-rate independent
 
 // --- State ---
 // States: menu, ready, play, dying, dead
@@ -143,10 +158,13 @@ let score = 0, best = 0;
 let drone, pipes, particles;
 let frame = 0;
 let deathTimer = 0;
-let readyTimer = 0;
+let readyStartTime = 0; // timestamp when ready began
+let readyT = 0;         // 0->1 progress through ready phase
 let screenShake = 0;
 let flashAlpha = 0;
 let globalTick = 0;
+let fireworks = [];     // { x, y, vy, hue, fuse, exploded }
+let fwTimer = 0;        // frames until next firework
 
 // --- Background (generated once, deterministic) ---
 const bgStars = Array.from({ length: 55 }, () => ({
@@ -184,7 +202,8 @@ function hideScreen(el) { el.classList.remove('show'); }
 function flap() {
   if (state === 'menu') {
     state = 'ready';
-    readyTimer = 0;
+    readyStartTime = performance.now();
+    readyT = 0;
     hideScreen(menuScreen);
     init();
     return;
@@ -249,6 +268,68 @@ function spawnExplosion(x, y) {
       hue: 45 + Math.random() * 15, sat: 100, lum: 75
     });
   }
+}
+
+// --- Fireworks ---
+function updateFireworks() {
+  // Random spawn every 180-400 frames, only after 5 gates cleared
+  if (state === 'play' && score >= 5) {
+    fwTimer--;
+    if (fwTimer <= 0) {
+      fwTimer = 180 + Math.random() * 220;
+      const fx = 40 + Math.random() * (W - 80);
+      fireworks.push({
+        x: fx, y: H - GROUND_H,
+        vy: -(3 + Math.random() * 2),
+        hue: Math.random() * 360,
+        targetY: 60 + Math.random() * 150,
+        trail: [],
+        exploded: false
+      });
+    }
+  }
+
+  fireworks.forEach(fw => {
+    if (!fw.exploded) {
+      fw.y += fw.vy;
+      fw.trail.push({ x: fw.x + (Math.random() - 0.5) * 2, y: fw.y });
+      if (fw.trail.length > 12) fw.trail.shift();
+      if (fw.y <= fw.targetY) {
+        fw.exploded = true;
+        // Burst into colorful particles
+        const burstHues = [fw.hue, (fw.hue + 40) % 360, (fw.hue + 80) % 360];
+        for (let i = 0; i < 28; i++) {
+          const a = (Math.PI * 2 / 28) * i + Math.random() * 0.3;
+          const spd = Math.random() * 3 + 1;
+          particles.push({
+            x: fw.x, y: fw.y,
+            vx: Math.cos(a) * spd, vy: Math.sin(a) * spd - 0.5,
+            life: 25 + Math.random() * 20, maxLife: 45,
+            r: Math.random() * 3 + 1.5,
+            hue: burstHues[i % 3], sat: 100, lum: 60
+          });
+        }
+      }
+    }
+  });
+  fireworks = fireworks.filter(fw => !fw.exploded);
+}
+
+function drawFireworks() {
+  fireworks.forEach(fw => {
+    if (fw.exploded) return;
+    // Trail
+    fw.trail.forEach((pt, i) => {
+      ctx.globalAlpha = (i / fw.trail.length) * 0.6;
+      ctx.fillStyle = `hsl(${fw.hue}, 80%, 70%)`;
+      ctx.fillRect(pt.x, pt.y, 2, 2);
+    });
+    // Head
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = `hsl(${fw.hue}, 90%, 85%)`;
+    ctx.fillRect(fw.x - 1, fw.y - 1, 3, 3);
+    ctx.globalAlpha = 1;
+  });
 }
 
 // --- Drawing ---
@@ -361,7 +442,9 @@ function drawBuilding(x, w, topY, height, fromTop, pipeId) {
     if (signIdx < 6) {
       const roofTexts  = ['ZENATECH', 'IQ NANO', 'ZD1000', 'PP-1', 'IQ SQUARE', 'ZenaGames'];
       const roofColors = ['#00d4ff',  '#ff4488', '#44ffaa', '#ffaa22', '#aa66ff',   '#44ddff'];
-      drawNeonText(roofTexts[signIdx], x, topY - 16, w, roofColors[signIdx], pipeId);
+      // Position sign above the cap (cap is at topY, 5px tall, with 4px overhang)
+      // Sign at 1.5x scale is ~7.5px tall, place it clearly above cap
+      drawNeonText(roofTexts[signIdx], x, topY - 14, w, roofColors[signIdx], pipeId);
     }
   }
 }
@@ -563,60 +646,118 @@ function drawDeathSequence() {
 function drawReadySequence() {
   if (state !== 'ready') return;
 
-  const t = readyTimer / READY_DURATION; // 0 -> 1
+  const t = readyT; // 0 -> 1 over exactly 4 seconds
+  const elapsed = performance.now() - readyStartTime;
 
-  // Draw drone with flickering outline
+  // Draw drone
   drawDrone(drone.x, drone.y, drone.angle, drone.propPhase);
 
-  // Outline blink: starts very fast (period=3), eases to slow (period=40), then solid
-  const blinkPeriod = 3 + t * t * t * 37; // cubic ease -- lingers fast, slows gradually
-  const blinkOn = (readyTimer % Math.round(blinkPeriod)) < (blinkPeriod * 0.5);
+  // Blinking outline that hugs the drone shape
+  // Blink frequency: starts fast (~15Hz), tapers to slow (~2Hz), then fades out
+  // Use elapsed ms for consistent blink speed regardless of refresh rate
+  const blinkHz = 15 - t * t * 13; // 15Hz -> 2Hz, cubic taper
+  const blinkPhase = Math.sin(elapsed * blinkHz * 0.00628); // 2*PI/1000
+  const blinkOn = blinkPhase > 0;
 
-  if (blinkOn || t > 0.92) {
-    // Draw glowing outline around drone
+  if (blinkOn || t > 0.9) {
     ctx.save();
     ctx.translate(drone.x, drone.y);
     ctx.rotate(drone.angle);
 
-    const outlineAlpha = t > 0.92 ? (1 - (t - 0.92) / 0.08) : 0.8; // fade out at end
+    const outlineAlpha = t > 0.9 ? Math.max(0, 1 - (t - 0.9) / 0.1) : 0.85;
     ctx.strokeStyle = '#00d4ff';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1;
     ctx.globalAlpha = outlineAlpha;
     ctx.shadowColor = '#00d4ff';
-    ctx.shadowBlur = 8;
-    ctx.strokeRect(-16, -9, 32, 20);
+    ctx.shadowBlur = 6;
+
+    // Tight outline following drone body shape
+    ctx.beginPath();
+    ctx.moveTo(-15, -5);
+    ctx.lineTo(-4, -5);
+    ctx.lineTo(-4, -8);  // hub top
+    ctx.lineTo(4, -8);
+    ctx.lineTo(4, -5);
+    ctx.lineTo(15, -5);
+    ctx.lineTo(19, -2);  // right arm tip
+    ctx.lineTo(19, 3);
+    ctx.lineTo(15, 3);
+    ctx.lineTo(10, 5);
+    ctx.lineTo(10, 9);   // right skid
+    ctx.lineTo(-10, 9);  // left skid
+    ctx.lineTo(-10, 5);
+    ctx.lineTo(-15, 3);
+    ctx.lineTo(-19, 3);
+    ctx.lineTo(-19, -2); // left arm tip
+    ctx.closePath();
+    ctx.stroke();
+
     ctx.shadowBlur = 0;
     ctx.shadowColor = 'transparent';
     ctx.globalAlpha = 1;
     ctx.restore();
   }
 
-  // Text sequence: GET READY -> Navigate the Skyline. -> GO
+  // Text with swoosh in/out transitions
+  // GET READY (0-40%) -> Navigate the Skyline. (40-78%) -> GO (78-100%)
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  if (t < 0.45) {
-    // GET READY -- slow fade in
-    ctx.globalAlpha = Math.min(1, readyTimer / 30) * 0.7;
-    ctx.font = '700 18px "Segoe UI", system-ui, sans-serif';
-    ctx.fillStyle = '#556';
-    ctx.fillText('GET READY', W / 2, H / 2 - 70);
-  } else if (t < 0.8) {
-    // Navigate the Skyline. -- gentle fade in
-    const fadeT = Math.min(1, (t - 0.45) / 0.1);
-    ctx.globalAlpha = fadeT * 0.8;
-    ctx.font = 'italic 16px "Segoe UI", system-ui, sans-serif';
+  const textY = H / 2 - 70;
+
+  if (t < 0.4) {
+    // GET READY -- swoosh in from left, hold, swoosh out right
+    const phase = t / 0.4; // 0->1 within this segment
+    let alpha, offsetX;
+    if (phase < 0.15) {
+      // Swoosh in
+      const p = phase / 0.15;
+      alpha = p * 0.8;
+      offsetX = (1 - p) * -40;
+    } else if (phase > 0.85) {
+      // Swoosh out
+      const p = (phase - 0.85) / 0.15;
+      alpha = (1 - p) * 0.8;
+      offsetX = p * 40;
+    } else {
+      alpha = 0.8;
+      offsetX = 0;
+    }
+    ctx.globalAlpha = alpha;
+    ctx.font = '700 20px "Segoe UI", system-ui, sans-serif';
     ctx.fillStyle = '#667';
-    ctx.fillText('Navigate the Skyline.', W / 2, H / 2 - 70);
+    ctx.fillText('GET READY', W / 2 + offsetX, textY);
+  } else if (t < 0.78) {
+    // Navigate the Skyline. -- swoosh in, hold, swoosh out
+    const phase = (t - 0.4) / 0.38;
+    let alpha, offsetX;
+    if (phase < 0.12) {
+      const p = phase / 0.12;
+      alpha = p * 0.85;
+      offsetX = (1 - p) * -35;
+    } else if (phase > 0.88) {
+      const p = (phase - 0.88) / 0.12;
+      alpha = (1 - p) * 0.85;
+      offsetX = p * 35;
+    } else {
+      alpha = 0.85;
+      offsetX = 0;
+    }
+    ctx.globalAlpha = alpha;
+    ctx.font = 'italic 700 18px "Segoe UI", system-ui, sans-serif';
+    ctx.fillStyle = '#778';
+    ctx.fillText('Navigate the Skyline.', W / 2 + offsetX, textY);
   } else {
-    // GO
-    const goT = (t - 0.8) / 0.2;
-    ctx.globalAlpha = goT;
-    ctx.font = '700 28px "Segoe UI", system-ui, sans-serif';
+    // GO -- swoosh in, stays, accent glow
+    const phase = (t - 0.78) / 0.22;
+    const p = Math.min(1, phase / 0.3);
+    ctx.globalAlpha = p;
+    const offsetX = (1 - p) * -30;
+    ctx.font = '700 30px "Segoe UI", system-ui, sans-serif';
     ctx.fillStyle = '#00d4ff';
-    ctx.shadowColor = '#00d4ff44';
-    ctx.shadowBlur = 15;
-    ctx.fillText('GO', W / 2, H / 2 - 70);
+    ctx.shadowColor = '#00d4ff66';
+    ctx.shadowBlur = 20;
+    ctx.fillText('GO', W / 2 + offsetX, textY);
     ctx.shadowBlur = 0;
     ctx.shadowColor = 'transparent';
   }
@@ -647,11 +788,11 @@ function update() {
   }
 
   if (state === 'ready') {
-    readyTimer++;
+    readyT = Math.min(1, (performance.now() - readyStartTime) / READY_MS);
     drone.propPhase += 0.5;
     drone.y = H / 2 + Math.sin(globalTick * 0.025) * 8;
     drone.angle = Math.sin(globalTick * 0.018) * 0.03;
-    if (readyTimer >= READY_DURATION) {
+    if (readyT >= 1) {
       state = 'play';
       hudEl.classList.add('show');
     }
@@ -748,6 +889,7 @@ function render() {
   drawGround();
 
   pipes.forEach(p => drawBuilding(p.x, p.w, p.y, p.h, p.fromTop, p.id));
+  drawFireworks();
   drawParticles();
 
   if (state === 'play') {
@@ -769,6 +911,7 @@ function render() {
   }
 
   globalTick++;
+  updateFireworks();
   update();
   requestAnimationFrame(render);
 }
