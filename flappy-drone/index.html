@@ -98,11 +98,18 @@
     font-size: 13px; color: #445; margin-top: 32px; letter-spacing: 1px;
     animation: pulse 2.5s ease-in-out infinite;
   }
+  .version {
+    position: absolute; top: 8px; right: 12px;
+    font-family: 'Courier New', monospace;
+    font-size: 9px; color: #222; letter-spacing: 0.5px;
+    pointer-events: none; z-index: 5;
+  }
 </style>
 </head>
 <body>
 <div id="wrap">
   <canvas id="game" width="620" height="640"></canvas>
+  <div class="version">version: 93cb865</div>
   <div class="hud" id="hud">0</div>
 
   <div class="screen show" id="menuScreen">
