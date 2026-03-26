@@ -35,17 +35,22 @@
   /* Menu */
   .tagline {
     font-family: 'Courier New', monospace;
-    font-size: 13px; letter-spacing: 8px; color: #334;
-    margin-bottom: 12px; text-transform: uppercase;
+    font-size: 18px; font-weight: 700; letter-spacing: 10px; color: #445;
+    margin-bottom: 14px; text-transform: uppercase;
+    text-shadow: 0 0 12px #00d4ff11;
   }
   .title {
     font-size: 38px; font-weight: 700; letter-spacing: 4px;
     color: #fff;
     text-shadow: 0 0 30px #00d4ff22, 0 2px 4px #00000044;
   }
+  .slogan {
+    font-size: 12px; color: #556; letter-spacing: 2px;
+    font-style: italic; margin-top: 6px;
+  }
   .subtitle {
-    font-size: 12px; color: #445; letter-spacing: 2px;
-    text-transform: uppercase; margin-top: 4px;
+    font-size: 11px; color: #334; letter-spacing: 1px;
+    text-transform: uppercase; margin-top: 10px;
   }
   .prompt {
     margin-top: 40px; font-size: 13px; color: #445; letter-spacing: 1px;
@@ -85,6 +90,7 @@
   <div class="screen show" id="menuScreen">
     <div class="tagline">-- ZENATECH --</div>
     <div class="title">FLAPPY DRONE</div>
+    <div class="slogan">Building the drone as we're flying it</div>
     <div class="subtitle">Navigate the skyline</div>
     <div class="prompt">Tap or press Space</div>
   </div>
@@ -120,9 +126,9 @@ const CEILING_Y = 10;
 
 // --- Death sequence timing (frames) ---
 const DEATH_FLASH_DUR = 15;       // red flash
-const DIED_FADE_IN = 50;          // "YOU DIED" fades in over ~0.8s
-const DIED_HOLD = 60;             // holds for ~1s
-const DIED_FADE_OUT = 40;         // fades out over ~0.7s
+const DIED_FADE_IN = 120;         // "YOU DIED" fades in slowly over ~2s
+const DIED_HOLD = 70;             // holds for ~1.2s
+const DIED_FADE_OUT = 60;         // fades out over ~1s
 const DIED_TOTAL = DEATH_FLASH_DUR + DIED_FADE_IN + DIED_HOLD + DIED_FADE_OUT;
 const SCORE_DELAY = 20;           // pause before score screen
 
@@ -212,16 +218,29 @@ function spawnThrust() {
 }
 
 function spawnExplosion(x, y) {
-  const hues = [15, 35, 195, 5];
-  for (let i = 0; i < 20; i++) {
-    const a = (Math.PI * 2 / 20) * i + Math.random() * 0.4;
-    const spd = Math.random() * 3 + 0.5;
+  const hues = [15, 35, 50, 195, 5, 30];
+  // Outer burst -- big sparkles
+  for (let i = 0; i < 36; i++) {
+    const a = (Math.PI * 2 / 36) * i + Math.random() * 0.3;
+    const spd = Math.random() * 5 + 1.5;
+    particles.push({
+      x: x + (Math.random() - 0.5) * 6, y: y + (Math.random() - 0.5) * 6,
+      vx: Math.cos(a) * spd, vy: Math.sin(a) * spd,
+      life: 30 + Math.random() * 25, maxLife: 55,
+      r: Math.random() * 4 + 2,
+      hue: hues[i % hues.length]
+    });
+  }
+  // Inner hot core -- small bright sparks
+  for (let i = 0; i < 16; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const spd = Math.random() * 2 + 0.3;
     particles.push({
       x, y,
       vx: Math.cos(a) * spd, vy: Math.sin(a) * spd,
-      life: 22 + Math.random() * 18, maxLife: 40,
-      r: Math.random() * 2.5 + 1,
-      hue: hues[i % 4]
+      life: 15 + Math.random() * 12, maxLife: 27,
+      r: Math.random() * 2 + 1,
+      hue: 40 + Math.random() * 20
     });
   }
 }
@@ -330,50 +349,72 @@ function drawBuilding(x, w, topY, height, fromTop, pipeId) {
     }
   }
 
-  // Rooftop ZENATECH neon sign (only some bottom buildings)
-  if (!fromTop && pipeId !== undefined && (pipeId % 4 === 0)) {
-    drawRooftopSign(x, topY, w);
+  // Rooftop neon signs (bottom buildings only, ~1 in 5)
+  if (!fromTop && pipeId !== undefined) {
+    const signIdx = (pipeId * 7 + 3) % 31; // deterministic spread
+    if (signIdx < 6) {
+      const roofTexts  = ['ZENATECH', 'IQ NANO', 'ZD1000', 'PP-1', 'IQ SQUARE', 'ZenaGames'];
+      const roofColors = ['#00d4ff',  '#ff4488', '#44ffaa', '#ffaa22', '#aa66ff',   '#44ddff'];
+      drawNeonText(roofTexts[signIdx], x, topY - 16, w, roofColors[signIdx], pipeId);
+    }
   }
 }
 
-// --- Pixel font for rooftop sign ---
-const PIXEL_CHARS = {
-  Z: [0b11111,0b00010,0b00100,0b01000,0b11111],
-  E: [0b11111,0b10000,0b11110,0b10000,0b11111],
-  N: [0b10001,0b11001,0b10101,0b10011,0b10001],
-  A: [0b01110,0b10001,0b11111,0b10001,0b10001],
-  T: [0b11111,0b00100,0b00100,0b00100,0b00100],
-  C: [0b01111,0b10000,0b10000,0b10000,0b01111],
-  H: [0b10001,0b10001,0b11111,0b10001,0b10001],
+// --- Pixel font (5x5 per character) ---
+const PX = {
+  A:[0b01110,0b10001,0b11111,0b10001,0b10001],
+  C:[0b01111,0b10000,0b10000,0b10000,0b01111],
+  D:[0b11110,0b10001,0b10001,0b10001,0b11110],
+  E:[0b11111,0b10000,0b11110,0b10000,0b11111],
+  G:[0b01111,0b10000,0b10011,0b10001,0b01111],
+  H:[0b10001,0b10001,0b11111,0b10001,0b10001],
+  I:[0b11111,0b00100,0b00100,0b00100,0b11111],
+  N:[0b10001,0b11001,0b10101,0b10011,0b10001],
+  O:[0b01110,0b10001,0b10001,0b10001,0b01110],
+  P:[0b11110,0b10001,0b11110,0b10000,0b10000],
+  Q:[0b01110,0b10001,0b10101,0b10010,0b01101],
+  R:[0b11110,0b10001,0b11110,0b10010,0b10001],
+  S:[0b01111,0b10000,0b01110,0b00001,0b11110],
+  T:[0b11111,0b00100,0b00100,0b00100,0b00100],
+  U:[0b10001,0b10001,0b10001,0b10001,0b01110],
+  Z:[0b11111,0b00010,0b00100,0b01000,0b11111],
+  // lowercase
+  a:[0b00000,0b01110,0b00001,0b01111,0b01111],
+  e:[0b00000,0b01110,0b11111,0b10000,0b01110],
+  m:[0b00000,0b11010,0b10101,0b10101,0b10001],
+  n:[0b00000,0b10110,0b11001,0b10001,0b10001],
+  s:[0b00000,0b01111,0b01000,0b00110,0b11110],
+  // digits + symbols
+  '0':[0b01110,0b10011,0b10101,0b11001,0b01110],
+  '1':[0b00110,0b10100,0b00100,0b00100,0b11111],
+  '-':[0b00000,0b00000,0b11111,0b00000,0b00000],
+  ' ':[0b00000,0b00000,0b00000,0b00000,0b00000],
 };
 
-function drawRooftopSign(bx, topY, bw) {
-  const text = 'ZENATECH';
-  const charW = 5, charH = 5, gap = 1, pixelSize = 1;
-  const totalW = text.length * (charW + gap) - gap;
-  const signW = totalW * pixelSize;
-  const sx = bx + (bw - signW) / 2;
-  const sy = topY - 10; // above the building cap
+function drawNeonText(text, bx, sy, bw, color, seed) {
+  const charW = 5, charH = 5, gap = 1, scale = 1.5;
+  const totalW = text.length * (charW + gap) * scale - gap * scale;
+  const sx = bx + (bw - totalW) / 2;
 
-  // Sign glow
+  // Glow backdrop
   ctx.globalAlpha = 0.15;
-  ctx.fillStyle = '#00d4ff';
-  ctx.fillRect(sx - 3, sy - 2, signW + 6, charH * pixelSize + 4);
+  ctx.fillStyle = color;
+  ctx.fillRect(sx - 3, sy - 2, totalW + 6, charH * scale + 4);
   ctx.globalAlpha = 1;
 
-  // Draw each character
-  const flicker = Math.sin(globalTick * 0.08 + bx) > -0.8 ? 1 : 0.3; // occasional flicker
-  ctx.globalAlpha = 0.9 * flicker;
+  // Flicker (each sign has its own rhythm)
+  const flicker = Math.sin(globalTick * 0.06 + seed * 3.7) > -0.85 ? 1 : 0.25;
+  ctx.globalAlpha = 0.85 * flicker;
+  ctx.fillStyle = color;
 
   for (let ci = 0; ci < text.length; ci++) {
-    const rows = PIXEL_CHARS[text[ci]];
+    const rows = PX[text[ci]];
     if (!rows) continue;
-    const cx = sx + ci * (charW + gap) * pixelSize;
+    const cx = sx + ci * (charW + gap) * scale;
     for (let r = 0; r < charH; r++) {
       for (let c = 0; c < charW; c++) {
         if ((rows[r] >> (charW - 1 - c)) & 1) {
-          ctx.fillStyle = '#00d4ff';
-          ctx.fillRect(cx + c * pixelSize, sy + r * pixelSize, pixelSize, pixelSize);
+          ctx.fillRect(cx + c * scale, sy + r * scale, scale, scale);
         }
       }
     }
