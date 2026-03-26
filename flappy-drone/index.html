@@ -65,8 +65,13 @@
     font-size: 11px; color: #334; letter-spacing: 1px;
     text-transform: uppercase; margin-top: 10px;
   }
+  .copyright {
+    font-family: 'Courier New', monospace;
+    font-size: 9px; color: #223; letter-spacing: 1px;
+    margin-top: 14px;
+  }
   .prompt {
-    margin-top: 40px; font-size: 13px; color: #445; letter-spacing: 1px;
+    margin-top: 28px; font-size: 13px; color: #445; letter-spacing: 1px;
     animation: pulse 2.5s ease-in-out infinite;
   }
   @keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
@@ -109,12 +114,13 @@
 <body>
 <div id="wrap">
   <canvas id="game" width="620" height="640"></canvas>
-  <div class="version">version: 93cb865</div>
+  <div class="version">version: 068b283</div>
   <div class="hud" id="hud">0</div>
 
   <div class="screen show" id="menuScreen">
     <div class="title">FLAPPY DRONE</div>
     <div class="slogan">Building the drone as we're flying it</div>
+    <div class="copyright">ZenaSoft (c) 1984 -- All Rights Reserved.</div>
     <div class="prompt">Tap or press Space</div>
   </div>
 
