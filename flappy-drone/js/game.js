@@ -59,8 +59,8 @@
   let activeMode = 'classic';
 
   // --- Zena Rush timer ---
-  const RUSH_START_TIME = 20;    // seconds to start
-  const RUSH_BONUS_TIME = 5;     // seconds added per 3 gaps
+  const RUSH_START_TIME = 12;    // seconds to start — pressure is immediate
+  const RUSH_BONUS_TIME = 3;     // seconds added per 3 gaps — timer slowly bleeds
   const RUSH_BONUS_EVERY = 3;    // gates per bonus
   let rushTimer = 0;             // seconds remaining
   let rushLastBonus = 0;         // last score that triggered bonus
