@@ -190,7 +190,7 @@
     } else {
       curGap    = 155;
       curSpeed  = 2.8;
-      curSpacing = 160;
+      curSpacing = 220;
       if (score < 8) {
         maxDrift = 120; biasAmt = 0.25; tier = 'T1 (0-7)';
       } else if (score < 18) {

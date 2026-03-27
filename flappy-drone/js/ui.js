@@ -131,7 +131,8 @@
       if (FD.silhouetteParts[droneType]) {
         ctx.beginPath();
         FD.silhouetteParts[droneType]();
-        ctx.globalCompositeOperation = 'source-over';
+        ctx.stroke();
+        ctx.fill();
       }
 
       ctx.shadowBlur = 0;

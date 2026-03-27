@@ -516,9 +516,10 @@
       var rushInterval = Math.round(60 - rushBuildT * 20); // 60 → 40 frames
     } else {
       // CLASSIC — constant physics, progressive oscillation
+      // Spacing is generous like original Flappy Bird — room to breathe.
       curGap    = 155;                                     // constant gap
       curSpeed  = 2.8;                                     // constant speed
-      curSpacing = 160;                                    // constant pixel distance between pipes
+      curSpacing = 220;                                    // constant pixel distance between pipes
     }
 
     // ── Spawn pipes ─────────────────────────────────────────────
