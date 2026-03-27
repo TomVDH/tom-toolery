@@ -82,6 +82,7 @@
   function triggerCountdown() {
     countdownActive = true;
     countdownStart = performance.now();
+    FD._droneAnimTriggered = false; // reset so a new random style is picked
   }
 
   function triggerNuke() {
@@ -458,7 +459,7 @@
 
     FD.drawReadySequence(t, 'ready');
 
-    if (t >= 1) countdownActive = false;
+    if (t >= 1) { countdownActive = false; FD._droneAnimTriggered = false; }
   }
 
   // --- Update ---

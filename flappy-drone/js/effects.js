@@ -649,9 +649,9 @@
   for (var si = 0; si < 80; si++) {
     FD.speedStreaks.push({
       y: Math.random() * FD.H,
-      baseLen: 4 + Math.random() * 12,
-      alpha: 0.08 + Math.random() * 0.18,
-      lineW: 0.5 + Math.random() * 1.0,
+      baseLen: 3 + Math.random() * 7,       // short dashes: 3-10px
+      alpha: 0.06 + Math.random() * 0.12,
+      lineW: 0.5 + Math.random() * 0.8,
       oscSpeed: 1.5 + Math.random() * 3,
       oscPhase: Math.random() * Math.PI * 2
     });
@@ -662,15 +662,16 @@
     var ctx = FD.ctx, W = FD.W, H = FD.H;
 
     var intensity = Math.min(1, (speed - 4.0) / 8.0);
-    var bandW = 25 + intensity * 15;
-    var visibleCount = Math.round(6 + intensity * 28);
+    var bandW = 20 + intensity * 12;         // narrow band: 20-32px
+    var visibleCount = Math.round(6 + intensity * 24);
 
+    // Always cyan-tinted — gets warmer orange only at extreme (12+)
     var cr, cg, cb;
-    if (speed < 8) {
-      cr = 0; cg = Math.round(180 + intensity * 75); cb = 255;
+    if (speed < 10) {
+      cr = 0; cg = Math.round(200 + intensity * 55); cb = 255; // pure cyan
     } else {
-      var warm = Math.min(1, (speed - 8) / 4);
-      cr = Math.round(warm * 255); cg = Math.round(180 - warm * 80); cb = Math.round(255 - warm * 200);
+      var warm = Math.min(1, (speed - 10) / 5);
+      cr = Math.round(warm * 180); cg = Math.round(200 - warm * 60); cb = Math.round(255 - warm * 100);
     }
 
     ctx.save();
@@ -679,11 +680,11 @@
       var offset = side * 40;
       for (var i = 0; i < visibleCount && i < 40; i++) {
         var s = FD.speedStreaks[offset + i];
-        var oscX = Math.sin(tick * s.oscSpeed * 0.02 + s.oscPhase) * bandW * 0.4;
-        var len = s.baseLen * (0.6 + intensity * 0.8);
+        var oscX = Math.sin(tick * s.oscSpeed * 0.02 + s.oscPhase) * bandW * 0.35;
+        var len = s.baseLen * (0.5 + intensity * 0.5); // max ~7.5px at full intensity
         var x1;
-        if (side === 0) { x1 = oscX + bandW * 0.2; }
-        else { x1 = W - bandW * 0.2 - len + oscX; }
+        if (side === 0) { x1 = oscX + bandW * 0.15; }
+        else { x1 = W - bandW * 0.15 - len + oscX; }
 
         ctx.strokeStyle = 'rgba(' + cr + ',' + cg + ',' + cb + ',' + (s.alpha * intensity) + ')';
         ctx.lineWidth = s.lineW;
