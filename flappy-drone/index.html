@@ -116,7 +116,7 @@
 <body>
 <div id="wrap">
   <canvas id="game" width="620" height="640"></canvas>
-  <div class="version">version: 068b283</div>
+  <div class="version">version: 0852ce8</div>
   <div class="hud" id="hud">0</div>
 
   <div class="screen show" id="menuScreen">
@@ -455,15 +455,14 @@ function drawBuilding(x, w, topY, height, fromTop, pipeId) {
     }
   }
 
-  // Rooftop neon signs (bottom buildings only, ~1 in 5)
+  // Rooftop neon signs (bottom buildings only, ~1 in 4)
   if (!fromTop && pipeId !== undefined) {
-    const signIdx = (pipeId * 7 + 3) % 31; // deterministic spread
-    if (signIdx < 6) {
-      const roofTexts  = ['ZENATECH', 'IQ NANO', 'ZD1000', 'PP-1', 'IQ SQUARE', 'ZenaGames'];
-      const roofColors = ['#00d4ff',  '#ff4488', '#44ffaa', '#ffaa22', '#aa66ff',   '#44ddff'];
-      // Position sign above the cap (cap is at topY, 5px tall, with 4px overhang)
-      // Sign at 1.5x scale is ~7.5px tall, place it clearly above cap
-      drawNeonText(roofTexts[signIdx], x, topY - 14, w, roofColors[signIdx], pipeId);
+    const hash = ((pipeId * 13 + 7) * 37) % 100; // better spread
+    if (hash < 25) { // 25% chance
+      const roofTexts  = ['IQ NANO', 'ZD1000', 'PP-1', 'IQ SQUARE', 'ZenaGames', 'ZENATECH'];
+      const roofColors = ['#ff4488', '#44ffaa', '#ffaa22', '#aa66ff',   '#44ddff',  '#00d4ff'];
+      const idx = ((pipeId * 11 + 5) * 23) % roofTexts.length;
+      drawNeonText(roofTexts[idx], x, topY - 14, w, roofColors[idx], pipeId);
     }
   }
 }
