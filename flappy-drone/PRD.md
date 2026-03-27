@@ -20,19 +20,36 @@ https://tomvdh.github.io/Tomtoolery/flappy-drone/index.html
 
 ## Gameplay Specifications
 
+### Classic Mode (constant physics, progressive oscillation)
+
 | Parameter        | Value   |
 |------------------|---------|
 | Canvas size      | 620x640 |
-| Gravity          | 0.22    |
-| Flap force       | -5.2    |
-| Pipe speed       | 2.1 px/frame |
-| Pipe interval    | 160 frames |
-| Gap size         | 170 px  |
-| Pipe width       | 56 px   |
-| Terminal velocity| 8 px/frame |
+| Gravity          | 0.26 px/f² |
+| Flap force       | -5.4 px/f |
+| Speed            | 2.8 px/f (constant) |
+| Pipe spacing     | 220 px (pixel-based, + dynamic extra for big vertical jumps) |
+| Gap size         | 155 px (constant) |
+| Pipe width       | 56 px (wide buildings 76-101px from gate 15) |
+| Terminal velocity| 8 px/f |
 | Ready countdown  | 4 seconds (real-time) |
-| Fireworks trigger| Score >= 5 |
+| Fireworks (ambient) | Score >= 5 |
+| Fireworks (per-gate) | Score >= 20 |
+| Min vertical jump | 30px (T1) / 50px (T2) / 70px (T3+) |
 | Fixed timestep   | 60fps (frame-rate independent) |
+
+### Zena Rush Mode (timed, speed ramp, win at 100)
+
+| Parameter        | Value   |
+|------------------|---------|
+| Start speed      | 9.45 px/f → 12.0 px/f |
+| Gap size         | 175 → 110 px |
+| Pipe interval    | 60 → 40 frames |
+| Start timer      | 12 seconds |
+| Bonus time       | +3s every 3 gates |
+| Min vertical jump | 60 → 120 px |
+| Win condition    | 100 gates ("ZENAVLLE IS SAVED") |
+| Death text       | "ZENAVLLE HAS FALLEN" + nuke |
 
 ## Controls
 
@@ -181,14 +198,27 @@ Drone survives longer during nuke to enjoy the spectacle.
 
 ## Future Considerations / Backlog
 
-- **Difficulty ramping**: Speed, gap size, and pipe interval should scale with score (proposed: tutorial 0-5, ramping 6-50, insane 51+)
+### Priority — Next up
+
+- **Score milestones**: Visual celebrations at gates 10, 25, 50 (firework burst, screen flash, text pop like "NICE!", "INSANE!", "LEGENDARY!")
+- **Near-miss bonus**: Threading a tight gap triggers a particle trail or brief score flash — rewards precision
+- **Speed indicator effect**: Screen edge blur/streaks at high Rush speeds — develop in tester first
+- **Sound design**: Flap whoosh, score ding, death crunch, Rush timer ticking, nuke rumble, milestone fanfare
+- **Lore intro redesign**: Text box with drone portrait dialogue style for Rush mode lore screen (preview/mockup first)
+
+### Backlog
+
 - **Tsar Bomba nuke variant**: Full-fidelity prototype built (preview 19), ready to integrate as alternate explosion style
 - **Neutron Star nuke variant**: Sci-fi energy burst concept prototyped
-- **Floating pickup items**:
+- **Floating pickup items** (code exists, not active in gameplay):
   - **Nuke pickup**: Collecting it arms the drone — next building collision triggers nuke, razes buildings, you survive
   - **Shield pickup**: Temporary invulnerability, smash through buildings
 - **More drones**: Blimp (ZEPHYR), Mantis, Tandem (WARHORSE), Gyro concepts in preview 14
 - **UFOs / enemy drones**: Visual distractions at higher difficulty
-- **Sound effects and background music**
-- **Leaderboard** (local storage or server-backed)
+- **Daily challenge seed**: Same pipe layout for everyone each day, compete on scores
+- **Ghost drone**: Replay your best run as a translucent shadow
+- **Building themes per tier**: T1 clean glass, T2 industrial, T3 neon-heavy, T4 glitched/damaged
+- **Rush progress bar**: Thin bar at top showing 0-100 gate progress
+- **Leaderboard** (localStorage or server-backed)
+- **Unlockable drones**: Earn new drones by hitting score milestones
 - **Sign mount variety**: Rooftop, vertical side-mount, window-integrated, hanging bracket (prototyped in preview 16)
