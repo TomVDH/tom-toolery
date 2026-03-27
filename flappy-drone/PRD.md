@@ -79,6 +79,9 @@ A separate `tester.html` provides buttons to trigger all game effects in isolati
 - Difficulty ramping (speed increases over time)
 - Sound effects and background music
 - Leaderboard (local storage or server-backed)
-- Power-ups (shield, slow-mo)
+- Floating pickup items (visual prototypes in tester):
+  - **Nuke pickup**: Radioactive trefoil symbol. Collecting it arms the drone — next building collision triggers the nuke sequence, razing buildings and letting you keep flying instead of dying
+  - **Shield pickup**: Blue energy orb with rotating hexagon. Grants temporary invulnerability, smash through buildings for a few seconds
+  - Pickup visuals bob and pulse, with colored glow halos
 - Themed skins for the drone
 - Nuclear explosion as cinematic death at high scores
