@@ -27,7 +27,7 @@
   .screen {
     position: absolute; inset: 0;
     display: flex; flex-direction: column; justify-content: center; align-items: center;
-    pointer-events: none; transition: opacity 0.8s ease;
+    pointer-events: none; transition: opacity 0.6s ease;
     opacity: 0; visibility: hidden;
   }
   .screen.show { opacity: 1; visibility: visible; }
@@ -163,7 +163,7 @@ const DIED_TOTAL = DEATH_FLASH_DUR + DIED_FADE_IN + DIED_HOLD + DIED_FADE_OUT;
 const SCORE_DELAY = 20;           // pause before score screen
 
 // --- Ready countdown ---
-const READY_MS = 5000; // 5 seconds, refresh-rate independent
+const READY_MS = 4000; // 4 seconds, refresh-rate independent
 
 // --- State ---
 // States: menu, ready, play, dying, dead
@@ -223,7 +223,7 @@ function flap() {
       state = 'ready';
       readyStartTime = performance.now();
       readyT = 0;
-    }, 800);
+    }, 650);
     return;
   }
   if (state === 'play') {
@@ -716,68 +716,71 @@ function drawReadySequence() {
     ctx.restore();
   }
 
-  // Text with swoosh in/out transitions
-  // GET READY (0-40%) -> Navigate the Skyline. (40-78%) -> GO (78-100%)
+  // Text: Ready? (0-38%) -> Set. (38-75%) -> DRONE! (75-100%)
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-
   const textY = H / 2 - 70;
 
-  if (t < 0.4) {
-    // GET READY -- swoosh in from left, hold, swoosh out right
-    const phase = t / 0.4; // 0->1 within this segment
+  if (t < 0.38) {
+    // "Ready?" -- swoosh in from left, hold, swoosh out right
+    const phase = t / 0.38;
     let alpha, offsetX;
     if (phase < 0.15) {
-      // Swoosh in
       const p = phase / 0.15;
-      alpha = p * 0.8;
-      offsetX = (1 - p) * -40;
+      alpha = p * 0.8; offsetX = (1 - p) * -40;
     } else if (phase > 0.85) {
-      // Swoosh out
       const p = (phase - 0.85) / 0.15;
-      alpha = (1 - p) * 0.8;
-      offsetX = p * 40;
+      alpha = (1 - p) * 0.8; offsetX = p * 40;
     } else {
-      alpha = 0.8;
-      offsetX = 0;
+      alpha = 0.8; offsetX = 0;
     }
     ctx.globalAlpha = alpha;
-    ctx.font = '700 20px "Segoe UI", system-ui, sans-serif';
+    ctx.font = '700 22px "Segoe UI", system-ui, sans-serif';
     ctx.fillStyle = '#667';
-    ctx.fillText('GET READY', W / 2 + offsetX, textY);
-  } else if (t < 0.78) {
-    // Navigate the Skyline. -- swoosh in, hold, swoosh out
-    const phase = (t - 0.4) / 0.38;
+    ctx.fillText('Ready?', W / 2 + offsetX, textY);
+
+  } else if (t < 0.75) {
+    // "Set." -- swoosh in, hold, swoosh out
+    const phase = (t - 0.38) / 0.37;
     let alpha, offsetX;
     if (phase < 0.12) {
       const p = phase / 0.12;
-      alpha = p * 0.85;
-      offsetX = (1 - p) * -35;
+      alpha = p * 0.85; offsetX = (1 - p) * -35;
     } else if (phase > 0.88) {
       const p = (phase - 0.88) / 0.12;
-      alpha = (1 - p) * 0.85;
-      offsetX = p * 35;
+      alpha = (1 - p) * 0.85; offsetX = p * 35;
     } else {
-      alpha = 0.85;
-      offsetX = 0;
+      alpha = 0.85; offsetX = 0;
     }
     ctx.globalAlpha = alpha;
-    ctx.font = 'italic 700 18px "Segoe UI", system-ui, sans-serif';
+    ctx.font = '700 22px "Segoe UI", system-ui, sans-serif';
     ctx.fillStyle = '#778';
-    ctx.fillText('Navigate the Skyline.', W / 2 + offsetX, textY);
+    ctx.fillText('Set.', W / 2 + offsetX, textY);
+
   } else {
-    // GO -- swoosh in, stays, accent glow
-    const phase = (t - 0.78) / 0.22;
-    const p = Math.min(1, phase / 0.3);
-    ctx.globalAlpha = p;
-    const offsetX = (1 - p) * -30;
-    ctx.font = '700 30px "Segoe UI", system-ui, sans-serif';
+    // "DRONE!" -- smacks into view: fast scale-up + glow punch
+    const phase = (t - 0.75) / 0.25;
+    const smackT = Math.min(1, phase / 0.15); // arrives fast in first 15% of segment
+    // Overshoot ease: goes to 1.15 then settles to 1.0
+    const ease = smackT < 1 ? smackT * (2 - smackT) : 1; // ease-out
+    const scaleOvershoot = smackT < 1 ? 1 + (1 - smackT) * 0.2 : 1;
+    const alpha = Math.min(1, smackT * 1.5);
+
+    ctx.save();
+    ctx.translate(W / 2, textY);
+    ctx.scale(scaleOvershoot, scaleOvershoot);
+    ctx.globalAlpha = alpha;
+    ctx.font = '700 36px "Courier New", monospace';
     ctx.fillStyle = '#00d4ff';
-    ctx.shadowColor = '#00d4ff66';
-    ctx.shadowBlur = 20;
-    ctx.fillText('GO', W / 2 + offsetX, textY);
+    ctx.shadowColor = '#00d4ffaa';
+    ctx.shadowBlur = 30;
+    ctx.fillText('DRONE!', 0, 0);
+    // Double draw for extra punch
+    ctx.shadowBlur = 12;
+    ctx.fillText('DRONE!', 0, 0);
     ctx.shadowBlur = 0;
     ctx.shadowColor = 'transparent';
+    ctx.restore();
   }
   ctx.globalAlpha = 1;
 }
