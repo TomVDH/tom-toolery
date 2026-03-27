@@ -31,7 +31,12 @@
   const drone = { x: W / 2, y: H / 2 - 40, vy: 0, angle: 0, propPhase: 0 };
 
   // --- Drone selection ---
-  function selectDrone(id) { activeDrone = id; }
+  function selectDrone(id) {
+    activeDrone = id;
+    document.querySelectorAll('[id^="drone-"]').forEach(function(b) { b.classList.remove('drone-active'); });
+    var el = document.getElementById('drone-' + id);
+    if (el) el.classList.add('drone-active');
+  }
 
   // --- Effect triggers ---
   function triggerDeath() {

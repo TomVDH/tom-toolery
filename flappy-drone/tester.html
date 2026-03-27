@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="css/game.css">
 <link rel="stylesheet" href="css/tester.css">
 </head>
-<body>
+<body style="flex-direction:row;height:100vh;overflow:hidden">
 <div id="panel">
   <div class="title-bar">
     <h1>TESTER</h1>
@@ -15,47 +15,61 @@
   </div>
 
   <h2>Drones</h2>
-  <button class="btn-fx" onclick="selectDrone('quad')" style="border-color:#00c8f0;">Pixel Quad</button>
-  <button class="btn-fx" onclick="selectDrone('stealth')" style="border-color:#00ff78;">Stealth</button>
-  <button class="btn-fx" onclick="selectDrone('heavy')" style="border-color:#cc8800;">Heavy Lift</button>
-  <button class="btn-fx" onclick="selectDrone('racer')" style="border-color:#ff0066;">Racer</button>
-  <button class="btn-fx" onclick="selectDrone('osprey')" style="border-color:#446688;">Osprey</button>
-  <button class="btn-fx" onclick="selectDrone('dragonfly')" style="border-color:#64ffc8;">Dragonfly</button>
-  <button class="btn-fx" onclick="selectDrone('disc')" style="border-color:#00c8ff;">Disc UFO</button>
-  <button class="btn-fx" onclick="selectDrone('spider')" style="border-color:#ff3232;">Spider Hex</button>
-  <button class="btn-fx" onclick="selectDrone('jetwing')" style="border-color:#446688;">Jetwing</button>
-  <button class="btn-fx" onclick="selectDrone('balloon')" style="border-color:#4a3a5a;">Balloon</button>
-  <button class="btn-fx" onclick="selectDrone('paperplane')" style="border-color:#c8c8d8;">Paper Plane</button>
-  <button class="btn-fx" onclick="selectDrone('chopper')" style="border-color:#2e3038;">Chopper</button>
+  <div class="btn-grid">
+    <button class="btn-fx" onclick="selectDrone('quad')" id="drone-quad">Pixel Quad</button>
+    <button class="btn-fx" onclick="selectDrone('stealth')" id="drone-stealth">Stealth</button>
+    <button class="btn-fx" onclick="selectDrone('heavy')" id="drone-heavy">Heavy Lift</button>
+    <button class="btn-fx" onclick="selectDrone('racer')" id="drone-racer">Racer</button>
+    <button class="btn-fx" onclick="selectDrone('osprey')" id="drone-osprey">Osprey</button>
+    <button class="btn-fx" onclick="selectDrone('dragonfly')" id="drone-dragonfly">Dragonfly</button>
+    <button class="btn-fx" onclick="selectDrone('disc')" id="drone-disc">Disc UFO</button>
+    <button class="btn-fx" onclick="selectDrone('spider')" id="drone-spider">Spider Hex</button>
+    <button class="btn-fx" onclick="selectDrone('jetwing')" id="drone-jetwing">Jetwing</button>
+    <button class="btn-fx" onclick="selectDrone('balloon')" id="drone-balloon">Balloon</button>
+    <button class="btn-fx" onclick="selectDrone('paperplane')" id="drone-paperplane">Paper Plane</button>
+    <button class="btn-fx" onclick="selectDrone('chopper')" id="drone-chopper">Chopper</button>
+    <button class="btn-fx" onclick="selectDrone('gyro')" id="drone-gyro">Whirlybird</button>
+    <button class="btn-fx" onclick="selectDrone('blimp')" id="drone-blimp">Zephyr</button>
+    <button class="btn-fx" onclick="selectDrone('tandem')" id="drone-tandem">Warhorse</button>
+  </div>
 
   <h2>Effects</h2>
-  <button class="btn-fx" onclick="triggerFirework()">Firework</button>
-  <button class="btn-fx" onclick="triggerCountdown()">Ready? Set. DRONE!</button>
-  <button class="btn-fx" onclick="triggerExplosion()">Explosion</button>
-  <button class="btn-fx" onclick="triggerThrust()">Thrust Burst</button>
+  <div class="btn-grid">
+    <button class="btn-fx" onclick="triggerFirework()">Firework</button>
+    <button class="btn-fx" onclick="triggerExplosion()">Explosion</button>
+    <button class="btn-fx" onclick="triggerThrust()">Thrust Burst</button>
+    <button class="btn-fx" onclick="triggerCountdown()">Countdown</button>
+  </div>
 
   <h2>Neon Signs</h2>
-  <button class="btn-sign" onclick="spawnSignBuilding('ZENATECH', '#00d4ff')">ZENATECH (rooftop)</button>
-  <button class="btn-sign" onclick="spawnSignBuilding('IQ NANO', '#ff4488')">IQ NANO</button>
-  <button class="btn-sign" onclick="spawnSignBuilding('ZD1000', '#44ffaa')">ZD1000</button>
-  <button class="btn-sign" onclick="spawnSignBuilding('PP-1', '#ffaa22')">PP-1</button>
-  <button class="btn-sign" onclick="spawnSignBuilding('IQ SQUARE', '#aa66ff')">IQ SQUARE</button>
-  <button class="btn-sign" onclick="spawnSignBuilding('ZenaGames', '#44ddff')">ZenaGames</button>
+  <div class="btn-grid-3">
+    <button class="btn-sign" onclick="spawnSignBuilding('ZENATECH', '#00d4ff')">ZENATECH</button>
+    <button class="btn-sign" onclick="spawnSignBuilding('IQ NANO', '#ff4488')">IQ NANO</button>
+    <button class="btn-sign" onclick="spawnSignBuilding('ZD1000', '#44ffaa')">ZD1000</button>
+    <button class="btn-sign" onclick="spawnSignBuilding('SKYNET', '#ff2244')">SKYNET</button>
+    <button class="btn-sign" onclick="spawnSignBuilding('APEX', '#ff8800')">APEX</button>
+    <button class="btn-sign" onclick="spawnSignBuilding('VOLT', '#00ffcc')">VOLT</button>
+  </div>
 
   <h2>Special</h2>
-  <button class="btn-death" onclick="triggerNuke()" style="border-color:#ff4400; background:#1a0800;">NUKE</button>
-  <button class="btn-fx" onclick="spawnPickup('nuke')" style="border-color:#ffcc00;">Nuke Pickup</button>
-  <button class="btn-fx" onclick="spawnPickup('shield')" style="border-color:#00bbff;">Shield Pickup</button>
-  <button class="btn-fx" onclick="spawnPickup('magnet')" style="border-color:#cc2233;">Magnet Pickup</button>
+  <button class="btn-nuke" onclick="triggerNuke()">☢ NUKE</button>
+  <div class="btn-row">
+    <button class="btn-fx" onclick="spawnPickup('nuke')" style="border-color:#ffcc00;">Nuke Pickup</button>
+    <button class="btn-fx" onclick="spawnPickup('shield')" style="border-color:#00bbff;">Shield Pickup</button>
+  </div>
 
-  <h2>Death Sequence</h2>
-  <button class="btn-death" onclick="triggerDeath()">Death - Full Sequence</button>
-  <button class="btn-death" onclick="triggerFlash()">Red Flash Only</button>
-  <button class="btn-death" onclick="triggerYouDied()">YOU DIED Text Only</button>
+  <h2>Death</h2>
+  <div class="btn-row">
+    <button class="btn-death" onclick="triggerDeath()">Full Sequence</button>
+    <button class="btn-death" onclick="triggerFlash()">Flash</button>
+    <button class="btn-death" onclick="triggerYouDied()">YOU DIED</button>
+  </div>
 
   <h2>Scene</h2>
-  <button class="btn-fx" id="motionBtn" onclick="toggleMotion()">Motion: ON</button>
-  <button class="btn-fx" onclick="resetScene()">Reset Scene</button>
+  <div class="btn-row">
+    <button class="btn-fx" id="motionBtn" onclick="toggleMotion()">Motion: ON</button>
+    <button class="btn-fx" onclick="resetScene()">Reset</button>
+  </div>
 </div>
 
 <canvas id="game" width="620" height="640"></canvas>

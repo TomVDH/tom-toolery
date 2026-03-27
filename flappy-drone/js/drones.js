@@ -538,6 +538,121 @@
     ctx.beginPath(); ctx.arc(-14.5, -3, 0.5, 0, Math.PI * 2); ctx.fill();
   };
 
+  // --- Blimp (Zephyr) ---
+  FD.drawDroneBlimp = function (propPhase) {
+    const ctx = FD.ctx;
+    const bob = Math.sin(FD.globalTick * 0.03) * 2;
+    // Ambient glow underneath
+    ctx.save();
+    ctx.globalAlpha = 0.08;
+    const glow = ctx.createRadialGradient(0, 6 + bob, 0, 0, 6 + bob, 12);
+    glow.addColorStop(0, '#ffdc64'); glow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(-14, -6 + bob, 28, 24);
+    ctx.restore();
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.1)';
+    ctx.beginPath(); ctx.ellipse(0, 14, 10, 1.5, 0, 0, Math.PI * 2); ctx.fill();
+    // Main envelope
+    ctx.fillStyle = '#3a3048';
+    ctx.beginPath(); ctx.ellipse(0, bob, 16, 6, 0, 0, Math.PI * 2); ctx.fill();
+    // Highlight
+    ctx.fillStyle = '#4a4060';
+    ctx.beginPath(); ctx.ellipse(0, -1.5 + bob, 13, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+    // Tail fins
+    ctx.fillStyle = '#2a2038';
+    ctx.beginPath(); ctx.moveTo(-14, -1 + bob); ctx.lineTo(-18, -5 + bob); ctx.lineTo(-16, -0.5 + bob); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-14, 1 + bob); ctx.lineTo(-18, 5 + bob); ctx.lineTo(-16, 0.5 + bob); ctx.closePath(); ctx.fill();
+    // Windows
+    ctx.fillStyle = '#aaccff';
+    for (var i = 0; i < 4; i++) {
+      ctx.globalAlpha = 0.7 + Math.sin(FD.globalTick * 0.05 + i) * 0.15;
+      ctx.fillRect(-4 + i * 3, 2.5 + bob, 1.5, 1);
+    }
+    ctx.globalAlpha = 1;
+    // Tethers
+    ctx.strokeStyle = '#555'; ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(-2, 5.8 + bob); ctx.lineTo(-2, 9 + bob); ctx.moveTo(3, 5.8 + bob); ctx.lineTo(3, 9 + bob); ctx.stroke();
+    // Gondola
+    ctx.fillStyle = '#2a2038';
+    ctx.fillRect(-3.5, 9 + bob, 8, 2.5);
+    ctx.fillStyle = '#353050';
+    ctx.fillRect(-3, 9.2 + bob, 7, 1.8);
+    // Pusher prop
+    var spin = Math.abs(Math.sin(propPhase * 1.5));
+    var pH = spin * 4;
+    ctx.globalAlpha = 0.5; ctx.fillStyle = '#888';
+    ctx.fillRect(-16.8, -pH / 2 + bob, 0.6, pH);
+    ctx.globalAlpha = 1;
+    // Nav light
+    ctx.fillStyle = FD.globalTick % 50 < 25 ? '#ff3355' : '#661122';
+    ctx.beginPath(); ctx.arc(15.5, bob, 0.7, 0, Math.PI * 2); ctx.fill();
+  };
+
+  // --- Tandem (Warhorse / Chinook-style) ---
+  FD.drawDroneTandem = function (propPhase) {
+    const ctx = FD.ctx;
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.1)';
+    ctx.beginPath(); ctx.ellipse(0, 14, 12, 2, 0, 0, Math.PI * 2); ctx.fill();
+    // Skid rails
+    ctx.fillStyle = '#2a2a1a';
+    ctx.fillRect(-11, 8.5, 22, 1);
+    // Skid legs
+    ctx.strokeStyle = '#3a3a2a'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-8, 6); ctx.lineTo(-9, 8.5);
+    ctx.moveTo(8, 6); ctx.lineTo(9, 8.5);
+    ctx.moveTo(-4, 6); ctx.lineTo(-5, 8.5);
+    ctx.moveTo(4, 6); ctx.lineTo(5, 8.5);
+    ctx.stroke();
+    // Body
+    ctx.fillStyle = '#3a3a2a';
+    ctx.beginPath();
+    ctx.moveTo(-11, -1); ctx.lineTo(11, -1);
+    ctx.quadraticCurveTo(13, 2.5, 11, 6);
+    ctx.lineTo(-11, 6);
+    ctx.quadraticCurveTo(-13, 2.5, -11, -1);
+    ctx.closePath(); ctx.fill();
+    // Body highlight
+    ctx.fillStyle = '#4a4a3a';
+    ctx.fillRect(-10, 0, 20, 3);
+    // Cargo door
+    ctx.strokeStyle = '#555'; ctx.lineWidth = 0.6;
+    ctx.strokeRect(-11, 1, 3, 4);
+    // Windows
+    ctx.fillStyle = '#556655';
+    ctx.fillRect(-3, 0.2, 1.5, 1.2);
+    ctx.fillRect(1, 0.2, 1.5, 1.2);
+    ctx.fillRect(5, 0.2, 1.5, 1.2);
+    // Rotor masts
+    ctx.fillStyle = '#2a2a1a';
+    ctx.fillRect(7, -4, 1.5, 3.5);
+    ctx.fillRect(-8.5, -4, 1.5, 3.5);
+    // Front rotor
+    var spin1 = Math.abs(Math.sin(propPhase));
+    var w1 = spin1 * 18;
+    ctx.globalAlpha = 0.5; ctx.fillStyle = '#aab';
+    ctx.fillRect(8 - w1 / 2, -4.5, w1, 1.2);
+    // Rear rotor (offset phase)
+    var spin2 = Math.abs(Math.sin(propPhase + 0.8));
+    var w2 = spin2 * 18;
+    ctx.fillRect(-8 - w2 / 2, -4.5, w2, 1.2);
+    ctx.globalAlpha = 1;
+    // Rotor hubs
+    ctx.fillStyle = '#555';
+    ctx.beginPath(); ctx.arc(8, -4, 1, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(-8, -4, 1, 0, Math.PI * 2); ctx.fill();
+    // Red blinker
+    var blink = FD.globalTick % 40 < 20;
+    ctx.fillStyle = blink ? '#ff2233' : '#551111';
+    ctx.beginPath(); ctx.arc(0, -1.5, 0.8, 0, Math.PI * 2); ctx.fill();
+    if (blink) {
+      ctx.fillStyle = 'rgba(255,34,51,0.15)';
+      ctx.beginPath(); ctx.arc(0, -1.5, 2.5, 0, Math.PI * 2); ctx.fill();
+    }
+  };
+
   // --- Silhouette parts (for nuke backlight) ---
   FD.silhouetteParts = {
     quad() {
@@ -639,15 +754,26 @@
     },
     gyro() {
       const ctx = FD.ctx;
-      // Fuselage pod
       ctx.beginPath();
       ctx.moveTo(-3, -3); ctx.quadraticCurveTo(6, -4, 6, 0);
       ctx.quadraticCurveTo(6, 4, -3, 3.5); ctx.lineTo(-3, -3);
       ctx.closePath(); ctx.fill();
-      // Tail boom
       ctx.fillRect(-14, -0.5, 11, 1.2);
-      // Stabilizer
       ctx.beginPath(); ctx.moveTo(-14, -0.5); ctx.lineTo(-15, -4); ctx.lineTo(-12.5, -0.5); ctx.closePath(); ctx.fill();
+    },
+    blimp() {
+      const ctx = FD.ctx;
+      ctx.beginPath(); ctx.ellipse(0, 0, 16, 6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(-3.5, 9, 8, 2.5);
+    },
+    tandem() {
+      const ctx = FD.ctx;
+      ctx.beginPath();
+      ctx.moveTo(-11, -1); ctx.lineTo(11, -1);
+      ctx.quadraticCurveTo(13, 2.5, 11, 6);
+      ctx.lineTo(-11, 6);
+      ctx.quadraticCurveTo(-13, 2.5, -11, -1);
+      ctx.closePath(); ctx.fill();
     }
   };
 
@@ -674,6 +800,8 @@
     else if (droneType === 'paperplane') FD.drawDronePaperplane(propPhase);
     else if (droneType === 'chopper') FD.drawDroneChopper(propPhase);
     else if (droneType === 'gyro') FD.drawDroneGyro(propPhase);
+    else if (droneType === 'blimp') FD.drawDroneBlimp(propPhase);
+    else if (droneType === 'tandem') FD.drawDroneTandem(propPhase);
     else FD.drawDroneQuad(propPhase); // fallback
 
     // Silhouette overlay

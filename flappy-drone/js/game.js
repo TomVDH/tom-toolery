@@ -29,13 +29,13 @@
   let versionClickTimer = 0;
   let activeDroneType = 'quad';
   let fadeStartTime = 0;
-  const droneTypes = ['quad', 'stealth', 'heavy', 'racer', 'osprey', 'dragonfly', 'disc', 'spider', 'jetwing', 'balloon', 'paperplane', 'chopper', 'gyro'];
+  const droneTypes = ['quad', 'stealth', 'heavy', 'racer', 'osprey', 'dragonfly', 'disc', 'spider', 'jetwing', 'balloon', 'paperplane', 'chopper', 'gyro', 'blimp', 'tandem'];
   const droneNames = {
     quad: 'PIXEL QUAD', stealth: 'SHADOW BLADE', heavy: 'IRON MULE',
     racer: 'PINK STREAK', osprey: 'SKY OSPREY', dragonfly: 'NEON BUG',
     disc: 'FLYING SAUCER', spider: 'ARACHNID HEX',
     jetwing: 'SKYKNIFE', balloon: 'FLOATER', paperplane: 'ORIGAMI', chopper: 'CHOPPER',
-    gyro: 'WHIRLYBIRD'
+    gyro: 'WHIRLYBIRD', blimp: 'ZEPHYR', tandem: 'WARHORSE'
   };
   let droneIndex = 0;
   const FRAME_MS = 1000 / 60; // fixed 60fps timestep
