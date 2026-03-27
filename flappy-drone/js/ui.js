@@ -154,9 +154,29 @@
     }
   };
 
+  // --- DRONE! animation variants (randomly selected each countdown) ---
+  const DRONE_STYLES = ['slam', 'typewriter', 'shockwave', 'radar', 'assemble'];
+  FD._droneAnimStyle = null;     // picked when DRONE! phase begins
+  FD._droneAnimTriggered = false; // prevents re-picking mid-animation
+
+  // Pre-generate particle data for G (assemble) style
+  const assembleParticles = [];
+  for (let c = 0; c < 6; c++) {
+    const set = [];
+    for (let p = 0; p < 12; p++) {
+      set.push({
+        sx: (Math.random() - 0.5) * 800, sy: (Math.random() - 0.5) * 600,
+        ex: (Math.random() - 0.5) * 14, ey: (Math.random() - 0.5) * 14,
+        sz: 1 + Math.random() * 2.5, spd: 0.7 + Math.random() * 0.5,
+        ea: Math.random() * Math.PI * 2, es: 2 + Math.random() * 4
+      });
+    }
+    assembleParticles.push(set);
+  }
+
   // --- Ready countdown overlay ---
   FD.drawReadySequence = function (readyT, state) {
-    if (state !== 'ready') return;
+    if (state !== 'ready') { FD._droneAnimTriggered = false; return; }
 
     const ctx = FD.ctx;
     const W = FD.W;
@@ -254,15 +274,188 @@
       ctx.fillText('Set.', W / 2 + offsetX, textY);
 
     } else {
-      // "DRONE!" — uses shared milestone renderer
+      // "DRONE!" — randomly selected animation style
       const phase = (t - 0.75) / 0.25;
 
-      // Particle burst on first frame
-      if (phase < 0.02) {
-        FD.spawnMilestoneParticles(W / 2, textY, '#00d4ff');
+      // Pick style once at start of DRONE! phase
+      if (!FD._droneAnimTriggered) {
+        FD._droneAnimTriggered = true;
+        FD._droneAnimStyle = DRONE_STYLES[Math.floor(Math.random() * DRONE_STYLES.length)];
       }
 
-      FD.drawMilestoneText('DRONE!', '#00d4ff', phase, W / 2, textY);
+      const style = FD._droneAnimStyle;
+      const dtext = 'DRONE!';
+
+      if (style === 'slam') {
+        // A — Milestone Slam
+        if (phase < 0.02) FD.spawnMilestoneParticles(W / 2, textY, '#00d4ff');
+        FD.drawMilestoneText(dtext, '#00d4ff', phase, W / 2, textY);
+
+      } else if (style === 'typewriter') {
+        // B — Typewriter Burn-In
+        const charTime = 0.08;  // faster since we have less total time
+        const totalType = 6 * charTime;
+        const holdEnd = 0.75, fadeStart = holdEnd;
+        ctx.font = '700 36px "Courier New", monospace';
+        const charW = ctx.measureText('D').width;
+        const totalW = ctx.measureText(dtext).width;
+        const startX = W / 2 - totalW / 2;
+        const localT = phase; // 0→1
+
+        if (localT < totalType) {
+          const charsVis = Math.floor(localT / charTime);
+          const cp = (localT % charTime) / charTime;
+          for (let i = 0; i <= charsVis && i < 6; i++) {
+            const isNew = (i === charsVis);
+            const cX = startX + ctx.measureText(dtext.substring(0, i)).width + charW / 2;
+            ctx.save();
+            if (isNew) {
+              ctx.globalAlpha = 0.3 + cp * 0.7; ctx.fillStyle = '#00d4ff';
+              ctx.shadowColor = '#fff'; ctx.shadowBlur = 20 + (1 - cp) * 30;
+              ctx.fillText(dtext[i], cX, textY);
+              if (1 - cp > 0.5) { ctx.globalAlpha = (1 - cp) * 0.5; ctx.fillStyle = '#fff'; ctx.shadowBlur = 40; ctx.fillText(dtext[i], cX, textY); }
+            } else {
+              ctx.globalAlpha = 1; ctx.fillStyle = '#00d4ff'; ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 8; ctx.fillText(dtext[i], cX, textY);
+            }
+            ctx.restore();
+          }
+          // Cursor
+          const curX = startX + ctx.measureText(dtext.substring(0, Math.min(charsVis + 1, 6))).width + 4;
+          if (Math.sin(localT * 120) > 0) { ctx.fillStyle = '#00d4ff'; ctx.globalAlpha = 0.6; ctx.fillRect(curX, textY - 16, 2, 32); ctx.globalAlpha = 1; }
+        } else if (localT < fadeStart) {
+          const pulse = 1 + Math.sin((localT - totalType) / (fadeStart - totalType) * Math.PI * 4) * 0.03;
+          ctx.save(); ctx.translate(W / 2, textY); ctx.scale(pulse, pulse);
+          ctx.fillStyle = '#00d4ff'; ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 15; ctx.fillText(dtext, 0, 0);
+          ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; ctx.restore();
+        } else {
+          const f = (localT - fadeStart) / (1 - fadeStart);
+          ctx.save(); ctx.globalAlpha = Math.max(0, 1 - f); ctx.translate(W / 2, textY);
+          ctx.scale(1 + f * 0.3, 1 + f * 0.3);
+          ctx.fillStyle = '#00d4ff'; ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 10 + f * 20; ctx.fillText(dtext, 0, 0); ctx.restore();
+        }
+
+      } else if (style === 'shockwave') {
+        // D — Shockwave Slam
+        ctx.font = '700 36px "Segoe UI", system-ui, sans-serif';
+        if (phase < 0.15) {
+          const dropT = phase / 0.15; const easeIn = dropT * dropT * dropT;
+          const y = -40 + (textY + 40) * easeIn;
+          ctx.save(); ctx.globalAlpha = Math.min(1, dropT * 2); ctx.fillStyle = '#00d4ff';
+          ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 20; ctx.fillText(dtext, W / 2, y); ctx.restore();
+        } else if (phase < 0.2) {
+          const impT = (phase - 0.15) / 0.05;
+          ctx.save(); ctx.globalAlpha = (1 - impT) * 0.4; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.restore();
+          const shake = (1 - impT) * 4;
+          ctx.save(); ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+          ctx.fillStyle = '#00d4ff'; ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 25;
+          ctx.fillText(dtext, W / 2, textY); ctx.shadowBlur = 10; ctx.fillText(dtext, W / 2, textY); ctx.restore();
+        } else if (phase < 0.7) {
+          const hp = (phase - 0.2) / 0.5;
+          const rr = 20 + hp * 200; const ra = Math.max(0, 0.4 - hp * 0.5);
+          ctx.save(); ctx.strokeStyle = 'rgba(0,212,255,' + ra + ')'; ctx.lineWidth = 2 - hp * 1.5;
+          ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 8;
+          ctx.beginPath(); ctx.arc(W / 2, textY, rr, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+          if (hp > 0.15) { const r2p = (hp - 0.15) / 0.85; const r2r = 15 + r2p * 160; const r2a = Math.max(0, 0.25 - r2p * 0.35);
+            ctx.save(); ctx.strokeStyle = 'rgba(0,212,255,' + r2a + ')'; ctx.lineWidth = 1.5 - r2p;
+            ctx.beginPath(); ctx.arc(W / 2, textY, r2r, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+          const breathe = 1 + Math.sin(hp * Math.PI * 6) * 0.015;
+          ctx.save(); ctx.translate(W / 2, textY); ctx.scale(breathe, breathe);
+          ctx.fillStyle = '#00d4ff'; ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 12;
+          ctx.fillText(dtext, 0, 0); ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; ctx.restore();
+        } else {
+          const ft = (phase - 0.7) / 0.3;
+          ctx.save(); ctx.translate(W / 2, textY); ctx.scale(1 + ft * 0.4, 1 + ft * 0.4);
+          ctx.globalAlpha = Math.max(0, 1 - ft * 1.3); ctx.fillStyle = '#00d4ff';
+          ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = ft * 25; ctx.fillText(dtext, 0, 0); ctx.restore();
+        }
+
+      } else if (style === 'radar') {
+        // F — Radar Sweep
+        ctx.font = '700 36px "Courier New", monospace';
+        const localT = phase; // 0→1
+        const sweepAngle = (localT / 0.4) * Math.PI * 2;
+        const sweepAlpha = localT < 0.6 ? Math.min(0.4, localT * 1.2) : Math.max(0, 0.4 - (localT - 0.6) * 1.0);
+        if (sweepAlpha > 0.01) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(0,212,255,' + sweepAlpha + ')'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(W / 2, textY);
+          ctx.lineTo(W / 2 + Math.cos(sweepAngle) * 200, textY + Math.sin(sweepAngle) * 200); ctx.stroke();
+          for (let i = 1; i < 6; i++) {
+            ctx.strokeStyle = 'rgba(0,212,255,' + (sweepAlpha * (1 - i / 6) * 0.3) + ')';
+            ctx.beginPath(); ctx.moveTo(W / 2, textY);
+            ctx.lineTo(W / 2 + Math.cos(sweepAngle - i * 0.12) * 180, textY + Math.sin(sweepAngle - i * 0.12) * 180); ctx.stroke();
+          }
+          ctx.strokeStyle = 'rgba(0,212,255,' + (sweepAlpha * 0.3) + ')';
+          ctx.beginPath(); ctx.arc(W / 2, textY, 100, 0, Math.PI * 2); ctx.stroke();
+          ctx.restore();
+        }
+        const totalW = ctx.measureText(dtext).width;
+        const startX = W / 2 - totalW / 2;
+        const charW = ctx.measureText('D').width;
+        for (let i = 0; i < 6; i++) {
+          const cX = startX + ctx.measureText(dtext.substring(0, i)).width + charW / 2;
+          const revealT = 0.1 + i * 0.1;
+          if (localT < revealT) continue;
+          const charAge = localT - revealT;
+          let charAlpha = charAge < 0.1 ? charAge / 0.1 : (localT < 0.8 ? 1 : Math.max(0, 1 - (localT - 0.8) / 0.2));
+          ctx.save(); ctx.globalAlpha = charAlpha; ctx.fillStyle = '#00d4ff';
+          ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = charAge < 0.2 ? 20 : 8;
+          ctx.fillText(dtext[i], cX, textY);
+          if (charAge < 0.2) {
+            const pr = charAge / 0.2 * 18; const pa = (1 - charAge / 0.2) * 0.4;
+            ctx.strokeStyle = 'rgba(0,212,255,' + pa + ')'; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(cX, textY, pr, 0, Math.PI * 2); ctx.stroke();
+          }
+          ctx.restore();
+        }
+
+      } else if (style === 'assemble') {
+        // G — Particle Assemble
+        ctx.font = '700 36px "Courier New", monospace';
+        const localT = phase;
+        const totalW = ctx.measureText(dtext).width;
+        const startX = W / 2 - totalW / 2;
+        const charW = ctx.measureText('D').width;
+        for (let c = 0; c < 6; c++) {
+          const cX = startX + ctx.measureText(dtext.substring(0, c)).width + charW / 2;
+          const cd = c * 0.03;
+          const lt = localT - cd;
+          if (lt < 0) continue;
+          if (lt < 0.3) {
+            // Converge
+            const ct = lt / 0.3; const ease = 1 - Math.pow(1 - ct, 3);
+            assembleParticles[c].forEach(function (p) {
+              const px = p.sx + (cX + p.ex - p.sx) * ease * p.spd;
+              const py = p.sy + (textY + p.ey - p.sy) * ease * p.spd;
+              ctx.save(); ctx.globalAlpha = Math.min(1, ct * 2); ctx.fillStyle = '#00d4ff';
+              ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 4;
+              ctx.beginPath(); ctx.arc(px, py, p.sz * (1 - ease * 0.5), 0, Math.PI * 2); ctx.fill(); ctx.restore();
+            });
+          } else if (lt < 0.4) {
+            // Crystallise
+            const ct = (lt - 0.3) / 0.1;
+            ctx.save(); ctx.globalAlpha = ct; ctx.fillStyle = '#00d4ff';
+            ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = (1 - ct) * 20 + 8;
+            ctx.fillText(dtext[c], cX, textY); ctx.restore();
+          } else if (lt < 0.75) {
+            // Hold
+            ctx.fillStyle = '#00d4ff'; ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 8;
+            ctx.fillText(dtext[c], cX, textY); ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+          } else {
+            // Shatter
+            const st = (lt - 0.75) / 0.25;
+            if (st < 0.1) { ctx.save(); ctx.globalAlpha = 1 - st * 10; ctx.fillStyle = '#00d4ff'; ctx.fillText(dtext[c], cX, textY); ctx.restore(); }
+            assembleParticles[c].forEach(function (p) {
+              const ease = st * st;
+              const px = cX + p.ex + Math.cos(p.ea) * p.es * ease * 100;
+              const py = textY + p.ey + Math.sin(p.ea) * p.es * ease * 100;
+              ctx.save(); ctx.globalAlpha = Math.max(0, 1 - ease * 1.3); ctx.fillStyle = '#00d4ff';
+              ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 3;
+              ctx.beginPath(); ctx.arc(px, py, p.sz * (1 - ease * 0.5), 0, Math.PI * 2); ctx.fill(); ctx.restore();
+            });
+          }
+        }
+      }
     }
     ctx.globalAlpha = 1;
   };
