@@ -147,12 +147,10 @@
   }
 
   // ── Score Milestones ──────────────────────────────────────
-  let milestoneState = 'off'; // off | appear | hold | fade
+  let milestoneState = 'off';
   let milestoneTimer = 0;
   let milestoneText = '';
   let milestoneColor = '#00d4ff';
-  let milestoneScale = 2.0;
-  let milestoneAlpha = 0;
   let milestoneY = 0;
 
   function triggerMilestone(text, color) {
@@ -160,74 +158,25 @@
     milestoneColor = color;
     milestoneState = 'appear';
     milestoneTimer = 0;
-    milestoneScale = 2.0;
-    milestoneAlpha = 0;
     milestoneY = H / 2 - 60;
 
-    // Particle burst around text position
-    var hue = 190; // cyan default
-    if (color === '#ffcc00') hue = 45;
-    else if (color === '#ff4466') hue = 345;
-    else if (color === '#cc44ff') hue = 280;
-    for (var i = 0; i < 16; i++) {
-      var a = (i / 16) * Math.PI * 2 + Math.random() * 0.3;
-      var spd = 1.5 + Math.random() * 2.5;
-      FD.particles.push({
-        x: W / 2 + Math.cos(a) * 20,
-        y: milestoneY + Math.sin(a) * 15,
-        vx: Math.cos(a) * spd,
-        vy: Math.sin(a) * spd - 0.5,
-        life: 30 + Math.random() * 25, maxLife: 55,
-        r: 1.5 + Math.random() * 2,
-        hue: hue + Math.random() * 30 - 15, sat: 100, lum: 65,
-        glow: true
-      });
-    }
+    // Use shared particle burst
+    FD.spawnMilestoneParticles(W / 2, milestoneY, color);
     // Subtle flash
     flashAlpha = 0.15;
   }
 
+  // Milestone update/draw now use shared FD.drawMilestoneText
   function updateMilestone() {
     if (milestoneState === 'off') return;
     milestoneTimer++;
-
-    if (milestoneState === 'appear') {
-      // Slam in: 15 frames, scale 2.0→1.0 with overshoot
-      var t = Math.min(1, milestoneTimer / 15);
-      var ease = t < 0.7 ? t / 0.7 : 1 + (1 - (t - 0.7) / 0.3) * 0.15; // overshoot
-      milestoneScale = 2.0 - ease * 1.0;
-      milestoneAlpha = Math.min(1, t * 2);
-      if (milestoneTimer >= 15) { milestoneState = 'hold'; milestoneTimer = 0; milestoneScale = 1.0; milestoneAlpha = 1; }
-    } else if (milestoneState === 'hold') {
-      // Hold for 60 frames (~1s)
-      milestoneScale = 1.0 + Math.sin(milestoneTimer * 0.15) * 0.02; // gentle breathe
-      if (milestoneTimer >= 60) { milestoneState = 'fade'; milestoneTimer = 0; }
-    } else if (milestoneState === 'fade') {
-      // Fade out upward over 30 frames
-      var ft = Math.min(1, milestoneTimer / 30);
-      milestoneAlpha = 1 - ft;
-      milestoneY = (H / 2 - 60) - ft * 30;
-      if (milestoneTimer >= 30) { milestoneState = 'off'; milestoneAlpha = 0; }
-    }
+    if (milestoneTimer >= 105) { milestoneState = 'off'; }
   }
 
   function drawMilestone() {
-    if (milestoneState === 'off' || milestoneAlpha < 0.01) return;
-    ctx.save();
-    ctx.translate(W / 2, milestoneY);
-    ctx.scale(milestoneScale, milestoneScale);
-    ctx.globalAlpha = milestoneAlpha;
-    ctx.font = '700 42px "Segoe UI", system-ui, sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.shadowColor = milestoneColor;
-    ctx.shadowBlur = 30;
-    ctx.fillStyle = milestoneColor;
-    ctx.fillText(milestoneText, 0, 0);
-    ctx.shadowBlur = 12;
-    ctx.fillText(milestoneText, 0, 0);
-    ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
-    ctx.globalAlpha = 1;
-    ctx.restore();
+    if (milestoneState === 'off') return;
+    var phase = Math.min(1, milestoneTimer / 105);
+    FD.drawMilestoneText(milestoneText, milestoneColor, phase, W / 2, milestoneY);
   }
 
   // ── Near-Miss Effect ────────────────────────────────────────

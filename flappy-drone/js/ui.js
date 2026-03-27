@@ -85,6 +85,75 @@
     }
   };
 
+  // --- Shared milestone text renderer ---
+  // Used by countdown DRONE!, in-game score milestones, and tester.
+  // phase: 0→1 over the effect lifetime
+  // Phases: appear (0–0.15), hold (0.15–0.7), revert-out (0.7–1.0)
+  FD.drawMilestoneText = function (text, color, phase, cx, cy) {
+    const ctx = FD.ctx;
+    var scale, alpha;
+
+    if (phase < 0.15) {
+      // Slam in: scale 2.0→1.0 with overshoot
+      var p = phase / 0.15;
+      var ease = p < 0.7 ? p / 0.7 : 1 + (1 - (p - 0.7) / 0.3) * 0.15;
+      scale = 2.0 - ease * 1.0;
+      alpha = Math.min(1, p * 2);
+    } else if (phase < 0.7) {
+      // Hold with gentle breathe
+      scale = 1.0 + Math.sin((phase - 0.15) * 12) * 0.02;
+      alpha = 1;
+    } else {
+      // Revert out: scale back up, fade
+      var rt = (phase - 0.7) / 0.3;
+      var eo = rt * rt;
+      scale = 1.0 + eo * 1.2;
+      alpha = Math.max(0, 1 - eo * 1.5);
+    }
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(scale, scale);
+    ctx.globalAlpha = alpha;
+    ctx.font = '700 42px "Segoe UI", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 30;
+    ctx.fillText(text, 0, 0);
+    ctx.shadowBlur = 12;
+    ctx.fillText(text, 0, 0);
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
+    ctx.globalAlpha = 1;
+    ctx.restore();
+
+    return { phase: phase, alpha: alpha }; // for caller to check if burst needed
+  };
+
+  // Spawn milestone particle burst (call once at phase start)
+  FD.spawnMilestoneParticles = function (cx, cy, color) {
+    var hue = 190;
+    if (color === '#ffcc00') hue = 45;
+    else if (color === '#ff4466') hue = 345;
+    else if (color === '#cc44ff') hue = 280;
+    for (var i = 0; i < 16; i++) {
+      var a = (i / 16) * Math.PI * 2 + Math.random() * 0.3;
+      var spd = 1.5 + Math.random() * 2.5;
+      FD.particles.push({
+        x: cx + Math.cos(a) * 25,
+        y: cy + Math.sin(a) * 18,
+        vx: Math.cos(a) * spd,
+        vy: Math.sin(a) * spd - 0.5,
+        life: 25 + Math.random() * 20, maxLife: 45,
+        r: 1.5 + Math.random() * 2,
+        hue: hue + Math.random() * 20 - 10, sat: 100, lum: 70,
+        glow: true
+      });
+    }
+  };
+
   // --- Ready countdown overlay ---
   FD.drawReadySequence = function (readyT, state) {
     if (state !== 'ready') return;
@@ -185,64 +254,15 @@
       ctx.fillText('Set.', W / 2 + offsetX, textY);
 
     } else {
-      // "DRONE!" — milestone-style slam in, hold with breathe, scale-revert out
+      // "DRONE!" — uses shared milestone renderer
       const phase = (t - 0.75) / 0.25;
 
-      let droneScale, droneAlpha;
-
-      if (phase < 0.15) {
-        // Slam in: scale 2.0→1.0 with overshoot (like milestone)
-        const p = phase / 0.15;
-        const ease = p < 0.7 ? p / 0.7 : 1 + (1 - (p - 0.7) / 0.3) * 0.15;
-        droneScale = 2.0 - ease * 1.0;
-        droneAlpha = Math.min(1, p * 2);
-
-        // Particle burst on first frame
-        if (phase < 0.02) {
-          for (let pi = 0; pi < 14; pi++) {
-            const a = (pi / 14) * Math.PI * 2 + Math.random() * 0.3;
-            const spd = 1.5 + Math.random() * 2.5;
-            FD.particles.push({
-              x: W / 2 + Math.cos(a) * 25,
-              y: textY + Math.sin(a) * 18,
-              vx: Math.cos(a) * spd,
-              vy: Math.sin(a) * spd - 0.5,
-              life: 25 + Math.random() * 20, maxLife: 45,
-              r: 1.5 + Math.random() * 2,
-              hue: 190 + Math.random() * 20, sat: 100, lum: 70,
-              glow: true
-            });
-          }
-        }
-      } else if (phase < 0.7) {
-        // Hold with gentle breathe
-        droneScale = 1.0 + Math.sin((phase - 0.15) * 12) * 0.02;
-        droneAlpha = 1;
-      } else {
-        // Revert out: scale back up to 2.0, fade to 0
-        const revertT = (phase - 0.7) / 0.3;
-        const easeOut = revertT * revertT; // ease-in for snappy exit
-        droneScale = 1.0 + easeOut * 1.2;
-        droneAlpha = Math.max(0, 1 - easeOut * 1.5);
+      // Particle burst on first frame
+      if (phase < 0.02) {
+        FD.spawnMilestoneParticles(W / 2, textY, '#00d4ff');
       }
 
-      ctx.save();
-      ctx.translate(W / 2, textY);
-      ctx.scale(droneScale, droneScale);
-      ctx.globalAlpha = droneAlpha;
-      ctx.font = '700 42px "Segoe UI", system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#00d4ff';
-      ctx.shadowColor = '#00d4ff';
-      ctx.shadowBlur = 30;
-      ctx.fillText('DRONE!', 0, 0);
-      ctx.shadowBlur = 12;
-      ctx.fillText('DRONE!', 0, 0);
-      ctx.shadowBlur = 0;
-      ctx.shadowColor = 'transparent';
-      ctx.globalAlpha = 1;
-      ctx.restore();
+      FD.drawMilestoneText('DRONE!', '#00d4ff', phase, W / 2, textY);
     }
     ctx.globalAlpha = 1;
   };
