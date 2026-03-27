@@ -544,10 +544,13 @@
 
       // ── Vertical oscillation — progressive by gate tier ────
       // Early: gentle drift near centre. Late: full-range swings with traps.
+      // Rush: aggressive oscillation at all times.
       var maxDrift, biasAmt;
       if (activeMode === 'rush') {
-        maxDrift = Math.max(120, 200 - Math.min(1, curSpeed / 12) * 60);
-        biasAmt  = 0.45;
+        // Rush: full-range swings from the start, gets wilder with speed
+        var rushOscT = Math.min(1, score / 15);
+        maxDrift = 200 + rushOscT * 100;                   // 200 → 300 px
+        biasAmt  = 0.50 + rushOscT * 0.15;                 // 0.50 → 0.65
       } else if (score < 8) {
         // Tier 1 (gates 0–7): moderate drift, learning phase
         maxDrift = 120;
@@ -577,7 +580,18 @@
       var driftMax = Math.min(maxTop, biasedY - curGap / 2 + maxDrift);
       if (driftMin > driftMax) driftMin = driftMax;
       var topH = driftMin + Math.random() * (driftMax - driftMin);
-      lastGapCenterY = topH + curGap / 2;
+      var newGapCenter = topH + curGap / 2;
+
+      // ── Dynamic spacing (Classic only) ──────────────────────
+      // Big vertical jumps get extra horizontal room so the drone
+      // can physically reach the next gap. Small jumps stay tight.
+      if (activeMode !== 'rush') {
+        var vertDelta = Math.abs(newGapCenter - lastGapCenterY);
+        var extraSpacing = Math.max(0, vertDelta - 100) * 0.5; // +0-75px for big swings
+        lastPipeSpawnX -= extraSpacing; // borrow from next spawn timer
+      }
+
+      lastGapCenterY = newGapCenter;
 
       // Pipe width — wider buildings appear randomly between gates 15–25
       var id = pipes.length / 2;

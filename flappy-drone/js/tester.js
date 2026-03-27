@@ -183,8 +183,9 @@
       curGap    = FD.GAP_SIZE - rushGapT * 65;            // 175 → 110
       curSpeed  = 9.45 + Math.min(1, score / 30) * 2.55;  // 9.45 → 12.0
       curSpacing = Math.round(60 - rushBuildT * 20) * curSpeed; // frame-interval × speed
-      maxDrift  = Math.max(120, 200 - Math.min(1, curSpeed / 12) * 60);
-      biasAmt   = 0.45;
+      var rushOscT = Math.min(1, score / 15);
+      maxDrift  = 200 + rushOscT * 100;                    // 200 → 300
+      biasAmt   = 0.50 + rushOscT * 0.15;                  // 0.50 → 0.65
       tier      = 'Rush';
     } else {
       curGap    = 155;
