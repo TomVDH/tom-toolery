@@ -14,7 +14,7 @@ FD.PIPE_SPEED    = 2.1;
 FD.PIPE_INTERVAL = 160;
 FD.GAP_SIZE      = 170;
 FD.PIPE_WIDTH    = 56;
-FD.GROUND_H      = 40;
+FD.GROUND_H      = 48;
 FD.CEILING_Y     = 10;
 
 // --- Death sequence timing (frames) ---

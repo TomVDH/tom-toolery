@@ -785,7 +785,15 @@
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
-    ctx.scale(1.15, 1.15);
+    // Per-drone scale for visual parity (all ~same screen footprint)
+    var droneScale = {
+      quad: 1.15, stealth: 1.15, heavy: 1.0, racer: 1.2,
+      osprey: 1.15, dragonfly: 1.25, disc: 1.1, spider: 1.0,
+      jetwing: 1.15, balloon: 1.1, paperplane: 1.15, chopper: 1.1,
+      gyro: 1.1, blimp: 0.85, tandem: 0.9
+    };
+    var s = droneScale[droneType] || 1.15;
+    ctx.scale(s, s);
 
     if (droneType === 'quad') FD.drawDroneQuad(propPhase);
     else if (droneType === 'stealth') FD.drawDroneStealth(propPhase);

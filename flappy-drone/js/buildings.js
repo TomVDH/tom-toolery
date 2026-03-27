@@ -134,7 +134,17 @@
     ctx.fillStyle = '#1a1a35';
     var off = scrollOffset;
     for (var x = -off; x < W; x += 24) {
-      ctx.fillRect(x, groundY + GROUND_H / 2 - 1, 12, 2);
+      ctx.fillRect(x, groundY + GROUND_H / 2, 12, 2);
+    }
+
+    // Kerb lights — small amber dots along sidewalk edge
+    ctx.fillStyle = 'rgba(255, 180, 60, 0.35)';
+    for (var kx = -off; kx < W; kx += 48) {
+      ctx.fillRect(kx + 2, groundY + 7, 3, 3);
+      // Subtle glow
+      ctx.fillStyle = 'rgba(255, 180, 60, 0.08)';
+      ctx.fillRect(kx - 2, groundY + 5, 11, 8);
+      ctx.fillStyle = 'rgba(255, 180, 60, 0.35)';
     }
 
   };
@@ -165,8 +175,9 @@
     ctx.fillStyle = 'hsl(' + hue + ', 12%, ' + (lit + 10) + '%)';
     ctx.fillRect(x - 4, capY, w + 8, 1);
 
-    // Windows
-    var winW = 5, winH = 7, cols = 3;
+    // Windows — adapt columns to building width
+    var winW = 5, winH = 7;
+    var cols = w >= 70 ? 5 : (w >= 50 ? 3 : 2);
     var margin = (w - cols * winW) / (cols + 1);
     var startY = fromTop ? topY + 10 : capY + 10;
     var endY = fromTop ? topY + height - 14 : topY + height - 6;
@@ -192,7 +203,8 @@
     var easterRowIdx = 0;
 
     // Track lit streaks per column
-    var streaks = [0, 0, 0];
+    var streaks = [];
+    for (var si = 0; si < cols; si++) streaks.push(0);
     for (var row = startY; row < endY; row += 16) {
       for (var c = 0; c < cols; c++) {
         var wx = x + margin + c * (winW + margin);
