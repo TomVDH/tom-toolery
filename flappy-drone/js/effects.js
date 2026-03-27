@@ -21,6 +21,15 @@
         hue: 15 + Math.random() * 25, sat: 100, lum: 55 + Math.random() * 20
       });
     }
+    // Bright blue spark flash — instant pop of cyan light
+    FD.particles.push({
+      x: droneX, y: droneY + 6,
+      vx: 0, vy: 0.5,
+      life: 3, maxLife: 3,
+      r: 14,
+      hue: 200, sat: 100, lum: 92,
+      glow: true
+    });
     // Tiny white-hot glow
     FD.particles.push({
       x: droneX, y: droneY + 10,
@@ -66,6 +75,38 @@
       hue: 30, sat: 100, lum: 97,
       glow: true
     });
+
+    // 2-3 scattered offshoots — smaller secondary explosions nearby
+    const offshootCount = 2 + Math.round(Math.random());
+    for (let o = 0; o < offshootCount; o++) {
+      const ox = x + (Math.random() - 0.5) * 60;
+      const oy = y + (Math.random() - 0.5) * 40;
+      const delay = 4 + Math.round(Math.random() * 8); // stagger slightly
+
+      // Mini shrapnel burst (8 streaks each)
+      for (let j = 0; j < 8; j++) {
+        const a = Math.random() * Math.PI * 2;
+        const spd = 4 + Math.random() * 2;
+        FD.particles.push({
+          x: ox + (Math.random() - 0.5) * 3, y: oy + (Math.random() - 0.5) * 3,
+          vx: Math.cos(a) * spd, vy: Math.sin(a) * spd,
+          life: delay + 10 + Math.random() * 8, maxLife: delay + 18,
+          r: 0.8 + Math.random() * 1.5,
+          hue: 20 + Math.random() * 25, sat: 100, lum: 60,
+          damping: 0.95,
+          streak: true
+        });
+      }
+      // Mini glow flash
+      FD.particles.push({
+        x: ox, y: oy,
+        vx: 0, vy: 0,
+        life: delay + 4, maxLife: delay + 4,
+        r: 18,
+        hue: 35, sat: 100, lum: 95,
+        glow: true
+      });
+    }
   };
 
   // --- Draw particles ---
