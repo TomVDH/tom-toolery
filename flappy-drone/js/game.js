@@ -29,6 +29,13 @@
   let versionClickTimer = 0;
   let activeDroneType = 'quad';
   let fadeStartTime = 0;
+  const droneTypes = ['quad', 'stealth', 'heavy', 'racer', 'osprey', 'dragonfly', 'disc', 'spider'];
+  const droneNames = {
+    quad: 'PIXEL QUAD', stealth: 'SHADOW BLADE', heavy: 'IRON MULE',
+    racer: 'PINK STREAK', osprey: 'SKY OSPREY', dragonfly: 'NEON BUG',
+    disc: 'FLYING SAUCER', spider: 'ARACHNID HEX'
+  };
+  let droneIndex = 0;
 
   // --- Neon sign data for pipe buildings ---
   const roofTexts  = ['IQ NANO', 'ZD1000', 'PP-1', 'IQ SQUARE', 'ZenaGames', 'ZENATECH', 'DRONE CO', 'SKYNET', 'HOVER', 'APEX', 'VOLT', 'NIMBUS'];
@@ -99,16 +106,33 @@
   canvas.addEventListener('click', flap);
   canvas.addEventListener('touchstart', function (e) { e.preventDefault(); flap(); }, { passive: false });
 
-  // --- Drone selector buttons ---
-  document.querySelectorAll('.drone-btn').forEach(function (btn) {
-    btn.addEventListener('click', function (e) {
-      e.stopPropagation(); // don't trigger flap
-      if (state !== 'menu') return;
-      activeDroneType = btn.dataset.drone;
-      FD.activeDroneType = activeDroneType;
-      document.querySelectorAll('.drone-btn').forEach(function (b) { b.classList.remove('active'); });
-      btn.classList.add('active');
-    });
+  // --- Drone cycle (left/right arrow keys or click the label) ---
+  function cycleDrone(dir) {
+    droneIndex = (droneIndex + dir + droneTypes.length) % droneTypes.length;
+    activeDroneType = droneTypes[droneIndex];
+    FD.activeDroneType = activeDroneType;
+    var label = document.getElementById('droneLabel');
+    if (label) label.textContent = droneNames[activeDroneType] || activeDroneType;
+  }
+  document.addEventListener('keydown', function (e) {
+    if (state !== 'menu') return;
+    if (e.code === 'ArrowLeft') { e.preventDefault(); cycleDrone(-1); }
+    if (e.code === 'ArrowRight') { e.preventDefault(); cycleDrone(1); }
+  });
+  var droneLabel = document.getElementById('droneLabel');
+  if (droneLabel) droneLabel.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (state === 'menu') cycleDrone(1);
+  });
+  var leftArrow = document.getElementById('droneLeft');
+  var rightArrow = document.getElementById('droneRight');
+  if (leftArrow) leftArrow.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (state === 'menu') cycleDrone(-1);
+  });
+  if (rightArrow) rightArrow.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (state === 'menu') cycleDrone(1);
   });
 
   // --- Version hash click -> nuke easter egg (5 rapid clicks on menu) ---
@@ -444,18 +468,16 @@
     // Menu: large tilted hero drone, animates to play position on tap
     if (state === 'menu') {
       drone.propPhase += 0.5;
-      var heroX = W / 2 - 20;
-      var heroY = H / 2 + Math.sin(FD.globalTick * 0.02) * 10;
+      var heroX = W / 2 - 14;
+      var heroY = H / 2 + 25 + Math.sin(FD.globalTick * 0.02) * 10;
       var heroAngle = -0.25 + Math.sin(FD.globalTick * 0.015) * 0.05;
       ctx.save();
       ctx.translate(heroX, heroY);
       ctx.rotate(heroAngle);
       ctx.scale(2.8, 2.8); // big hero drone
-      // Draw without the dispatcher's own translate/scale
-      if (activeDroneType === 'stealth') FD.drawDroneStealth(drone.propPhase);
-      else if (activeDroneType === 'heavy') FD.drawDroneHeavy(drone.propPhase);
-      else if (activeDroneType === 'racer') FD.drawDroneRacer(drone.propPhase);
-      else FD.drawDroneQuad(drone.propPhase);
+      // Draw the active drone type directly (bypass dispatcher to avoid double translate)
+      var heroDrawFn = FD['drawDrone' + activeDroneType.charAt(0).toUpperCase() + activeDroneType.slice(1)];
+      if (heroDrawFn) heroDrawFn(drone.propPhase); else FD.drawDroneQuad(drone.propPhase);
       ctx.restore();
     }
 
@@ -463,10 +485,9 @@
     if (state === 'fading') {
       drone.propPhase += 0.5;
       var fadeElapsed = performance.now() - fadeStartTime;
-      var fadeProgress = Math.min(1, fadeElapsed / 600); // 600ms transition
-      var ep = 1 - Math.pow(1 - fadeProgress, 3); // ease-out cubic
-      // Interpolate from hero pose to play pose
-      var fromX = W / 2 - 20, fromY = H / 2, fromAngle = -0.25, fromScale = 2.8;
+      var fadeProgress = Math.min(1, fadeElapsed / 600);
+      var ep = 1 - Math.pow(1 - fadeProgress, 3);
+      var fromX = W / 2 - 14, fromY = H / 2 + 25, fromAngle = -0.25, fromScale = 2.8;
       var toX = 100, toY = H / 2, toAngle = 0, toScale = 1.15;
       var cx = fromX + (toX - fromX) * ep;
       var cy = fromY + (toY - fromY) * ep;
@@ -476,10 +497,8 @@
       ctx.translate(cx, cy);
       ctx.rotate(ca);
       ctx.scale(cs, cs);
-      if (activeDroneType === 'stealth') FD.drawDroneStealth(drone.propPhase);
-      else if (activeDroneType === 'heavy') FD.drawDroneHeavy(drone.propPhase);
-      else if (activeDroneType === 'racer') FD.drawDroneRacer(drone.propPhase);
-      else FD.drawDroneQuad(drone.propPhase);
+      var fadeDrawFn = FD['drawDrone' + activeDroneType.charAt(0).toUpperCase() + activeDroneType.slice(1)];
+      if (fadeDrawFn) fadeDrawFn(drone.propPhase); else FD.drawDroneQuad(drone.propPhase);
       ctx.restore();
     }
 
