@@ -65,6 +65,24 @@
     <button class="btn-death" onclick="triggerYouDied()">YOU DIED</button>
   </div>
 
+  <h2>Pipe Generation</h2>
+  <div class="btn-row" style="margin-bottom:6px">
+    <button class="btn-mode" id="pipeMode-classic" onclick="setPipeMode('classic')">Classic</button>
+    <button class="btn-mode" id="pipeMode-rush" onclick="setPipeMode('rush')">Rush</button>
+  </div>
+  <div class="slider-row">
+    <label>Score: <span id="pipeScoreLabel">0</span></label>
+    <input type="range" id="pipeScore" min="0" max="50" value="0" oninput="onPipeScoreChange(this.value)">
+  </div>
+  <div class="btn-row">
+    <button class="btn-fx" onclick="generatePipePreview()">Generate</button>
+    <button class="btn-fx" id="scrollBtn" onclick="togglePipeScroll()">Scroll: OFF</button>
+    <button class="btn-fx" onclick="clearPipePreview()">Clear</button>
+  </div>
+  <div class="btn-row" style="margin-top:4px">
+    <button class="btn-fx" id="hitboxBtn" onclick="toggleHitboxes()">Hitboxes: OFF</button>
+  </div>
+
   <h2>Scene</h2>
   <div class="btn-row">
     <button class="btn-fx" id="motionBtn" onclick="toggleMotion()">Motion: ON</button>

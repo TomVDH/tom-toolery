@@ -148,6 +148,10 @@
 
   function resetScene() {
     testBuildings = [];
+    testPipes = [];
+    pipeScrollActive = false;
+    pipeSpawnAccum = 0;
+    document.getElementById('scrollBtn').textContent = 'Scroll: OFF';
     FD.particles = [];
     FD.fireworks = [];
     flashAlpha = 0;
@@ -157,6 +161,197 @@
     FD.nukeActive = false;
     FD.pickups = [];
     FD.screenShake = 0;
+  }
+
+  // ── Pipe Generation Preview ──────────────────────────────────
+  let testPipes = [];
+  let pipeMode = 'classic';
+  let pipeScore = 0;
+  let pipeScrollActive = false;
+  let pipeSpawnAccum = 0;
+  let pipeLastGapY = H / 2;
+  let pipeIdCounter = 0;
+  let showHitboxes = false;
+
+  // Difficulty ramp — mirrors game.js exactly
+  function getPipeParams(mode, score) {
+    var curGap, curSpeed, curSpacing, maxDrift, biasAmt, tier;
+
+    if (mode === 'rush') {
+      var rushBuildT = Math.min(1, score / 20);
+      var rushGapT = score < 8 ? 0 : Math.min(1, (score - 8) / 20);
+      curGap    = FD.GAP_SIZE - rushGapT * 65;            // 175 → 110
+      curSpeed  = 9.45 + Math.min(1, score / 30) * 2.55;  // 9.45 → 12.0
+      curSpacing = Math.round(60 - rushBuildT * 20) * curSpeed; // frame-interval × speed
+      maxDrift  = Math.max(120, 200 - Math.min(1, curSpeed / 12) * 60);
+      biasAmt   = 0.45;
+      tier      = 'Rush';
+    } else {
+      curGap    = 155;
+      curSpeed  = 2.8;
+      curSpacing = 160;
+      if (score < 8) {
+        maxDrift = 120; biasAmt = 0.25; tier = 'T1 (0-7)';
+      } else if (score < 18) {
+        maxDrift = 200; biasAmt = 0.45; tier = 'T2 (8-17)';
+      } else if (score < 30) {
+        maxDrift = 250; biasAmt = 0.55; tier = 'T3 (18-29)';
+      } else {
+        maxDrift = 280;
+        biasAmt = (Math.random() < 0.25) ? 0.05 : 0.60;
+        tier = 'T4 (30+)';
+      }
+    }
+    return { curGap, curSpeed, curSpacing, maxDrift, biasAmt, tier };
+  }
+
+  // Spawn a single pipe pair using exact game logic
+  function spawnOnePipe(params) {
+    var curGap = params.curGap;
+    var maxDrift = params.maxDrift;
+    var biasAmt = params.biasAmt;
+    var score = pipeScore;
+    var minTop = 70;
+    var maxTop = H - curGap - FD.GROUND_H - 70;
+
+    var midY = (minTop + maxTop + curGap) / 2;
+    var biasDir = (pipeLastGapY > midY) ? -1 : 1;
+    var biasedY = pipeLastGapY + biasDir * maxDrift * biasAmt;
+
+    var driftMin = Math.max(minTop, biasedY - curGap / 2 - maxDrift);
+    var driftMax = Math.min(maxTop, biasedY - curGap / 2 + maxDrift);
+    if (driftMin > driftMax) driftMin = driftMax;
+    var topH = driftMin + Math.random() * (driftMax - driftMin);
+    pipeLastGapY = topH + curGap / 2;
+
+    // Pipe width
+    var id = pipeIdCounter++;
+    var pipeW = FD.PIPE_WIDTH;
+    if (score >= 15 && pipeMode === 'classic') {
+      var widthRoll = Math.random() * 100;
+      var wideChance = Math.min(50, 20 + (score - 15) * 3);
+      if (widthRoll < wideChance) {
+        pipeW = FD.PIPE_WIDTH + 20 + Math.floor(Math.random() * 25);
+      }
+    } else if (score >= 10 && pipeMode === 'rush') {
+      var widthRoll = Math.random() * 100;
+      var wt = Math.min(1, score / 40);
+      var wideChance = 15 + wt * 35;
+      if (widthRoll < wideChance) {
+        pipeW = FD.PIPE_WIDTH + 20 + Math.floor(wt * 20);
+      }
+    }
+
+    var botY = topH + curGap;
+    return [
+      { x: 0, w: pipeW, y: 0,    h: topH,                   fromTop: true,  scored: false, id: id },
+      { x: 0, w: pipeW, y: botY, h: H - FD.GROUND_H - botY, fromTop: false, scored: false, id: id }
+    ];
+  }
+
+  function setPipeMode(mode) {
+    pipeMode = mode;
+    document.getElementById('pipeMode-classic').classList.toggle('mode-active', mode === 'classic');
+    document.getElementById('pipeMode-rush').classList.toggle('mode-active', mode === 'rush');
+  }
+
+  function onPipeScoreChange(val) {
+    pipeScore = parseInt(val, 10);
+    document.getElementById('pipeScoreLabel').textContent = val;
+  }
+
+  function generatePipePreview() {
+    testPipes = [];
+    testBuildings = [];
+    pipeLastGapY = H / 2;
+    pipeIdCounter = 0;
+    var params = getPipeParams(pipeMode, pipeScore);
+
+    // Fill screen with pipes, spaced by curSpacing
+    var x = 120; // first pipe offset from left
+    while (x < W + params.curSpacing) {
+      var pair = spawnOnePipe(params);
+      pair[0].x = x; pair[1].x = x;
+      testPipes.push(pair[0], pair[1]);
+      x += params.curSpacing;
+    }
+  }
+
+  function clearPipePreview() {
+    testPipes = [];
+    pipeScrollActive = false;
+    pipeSpawnAccum = 0;
+    document.getElementById('scrollBtn').textContent = 'Scroll: OFF';
+  }
+
+  function togglePipeScroll() {
+    pipeScrollActive = !pipeScrollActive;
+    document.getElementById('scrollBtn').textContent = 'Scroll: ' + (pipeScrollActive ? 'ON' : 'OFF');
+    if (pipeScrollActive && testPipes.length === 0) {
+      generatePipePreview();
+    }
+  }
+
+  function toggleHitboxes() {
+    showHitboxes = !showHitboxes;
+    document.getElementById('hitboxBtn').textContent = 'Hitboxes: ' + (showHitboxes ? 'ON' : 'OFF');
+  }
+
+  // Update scrolling pipes
+  function updatePipeScroll() {
+    if (!pipeScrollActive) return;
+    var params = getPipeParams(pipeMode, pipeScore);
+
+    // Move pipes
+    for (var i = 0; i < testPipes.length; i++) {
+      testPipes[i].x -= params.curSpeed;
+    }
+    // Remove off-screen pipes
+    testPipes = testPipes.filter(function (p) { return p.x + p.w > -20; });
+
+    // Spawn new pipes at right edge using pixel-based spacing
+    pipeSpawnAccum += params.curSpeed;
+    if (pipeSpawnAccum >= params.curSpacing || testPipes.length === 0) {
+      pipeSpawnAccum = 0;
+      var pair = spawnOnePipe(params);
+      pair[0].x = W + 10; pair[1].x = W + 10;
+      testPipes.push(pair[0], pair[1]);
+    }
+  }
+
+  // Draw pipe preview HUD
+  function drawPipeHUD() {
+    if (testPipes.length === 0) return;
+    var params = getPipeParams(pipeMode, pipeScore);
+    ctx.save();
+    ctx.font = '10px "SF Mono", "Menlo", "Courier New", monospace';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillStyle = 'rgba(0,212,255,0.7)';
+    var lines = [
+      pipeMode.toUpperCase() + '  Score: ' + pipeScore,
+      'Speed: ' + params.curSpeed.toFixed(1) + '  Gap: ' + params.curGap + 'px  Spacing: ' + Math.round(params.curSpacing) + 'px',
+      'Drift: ' + params.maxDrift + '  Bias: ' + params.biasAmt.toFixed(2) + '  Tier: ' + params.tier
+    ];
+    for (var i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i], 8, 8 + i * 14);
+    }
+    ctx.restore();
+  }
+
+  // Draw hitbox overlays
+  function drawHitboxes() {
+    if (!showHitboxes) return;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,50,50,0.6)';
+    ctx.lineWidth = 1;
+    // Drone hitbox
+    ctx.strokeRect(drone.x - 10, drone.y - 4, 20, 12);
+    // Pipe hitboxes
+    for (var i = 0; i < testPipes.length; i++) {
+      var p = testPipes[i];
+      ctx.strokeRect(p.x - 2, p.y, p.w + 4, p.h);
+    }
+    ctx.restore();
   }
 
   // --- Tester-specific drawing ---
@@ -276,6 +471,7 @@
       if (youDiedTimer >= 60) { youDiedState = 'off'; youDiedAlpha = 0; }
     }
 
+    updatePipeScroll();
     FD.updateParticles();
     FD.updateFireworks();
   }
@@ -305,6 +501,15 @@
     // Test buildings
     testBuildings.forEach(b => FD.drawBuilding(b));
 
+    // Test pipes (pipe generation preview)
+    testPipes.forEach(function (p) {
+      var seed = ((p.id * 2654435761) >>> 0);
+      FD.drawBuilding({
+        x: p.x, w: p.w, topY: p.y, height: p.h,
+        fromTop: p.fromTop, seed: seed
+      });
+    });
+
     FD.drawPickups();
     FD.drawFireworks();
     FD.drawParticles();
@@ -324,6 +529,8 @@
     drawFlash();
     drawYouDied();
     FD.drawNukeOverlay();
+    drawPipeHUD();
+    drawHitboxes();
 
     ctx.restore();
 
@@ -359,4 +566,13 @@
   window.spawnPickup = spawnPickup;
   window.toggleMotion = toggleMotion;
   window.resetScene = resetScene;
+  window.setPipeMode = setPipeMode;
+  window.onPipeScoreChange = onPipeScoreChange;
+  window.generatePipePreview = generatePipePreview;
+  window.clearPipePreview = clearPipePreview;
+  window.togglePipeScroll = togglePipeScroll;
+  window.toggleHitboxes = toggleHitboxes;
+
+  // Init mode toggle default
+  setPipeMode('classic');
 })();
