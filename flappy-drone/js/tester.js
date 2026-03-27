@@ -146,6 +146,220 @@
     document.getElementById('motionBtn').textContent = 'Motion: ' + (motionEnabled ? 'ON' : 'OFF');
   }
 
+  // ── Score Milestones ──────────────────────────────────────
+  let milestoneState = 'off'; // off | appear | hold | fade
+  let milestoneTimer = 0;
+  let milestoneText = '';
+  let milestoneColor = '#00d4ff';
+  let milestoneScale = 2.0;
+  let milestoneAlpha = 0;
+  let milestoneY = 0;
+
+  function triggerMilestone(text, color) {
+    milestoneText = text;
+    milestoneColor = color;
+    milestoneState = 'appear';
+    milestoneTimer = 0;
+    milestoneScale = 2.0;
+    milestoneAlpha = 0;
+    milestoneY = H / 2 - 60;
+
+    // Particle burst around text position
+    var hue = 190; // cyan default
+    if (color === '#ffcc00') hue = 45;
+    else if (color === '#ff4466') hue = 345;
+    else if (color === '#cc44ff') hue = 280;
+    for (var i = 0; i < 16; i++) {
+      var a = (i / 16) * Math.PI * 2 + Math.random() * 0.3;
+      var spd = 1.5 + Math.random() * 2.5;
+      FD.particles.push({
+        x: W / 2 + Math.cos(a) * 20,
+        y: milestoneY + Math.sin(a) * 15,
+        vx: Math.cos(a) * spd,
+        vy: Math.sin(a) * spd - 0.5,
+        life: 30 + Math.random() * 25, maxLife: 55,
+        r: 1.5 + Math.random() * 2,
+        hue: hue + Math.random() * 30 - 15, sat: 100, lum: 65,
+        glow: true
+      });
+    }
+    // Subtle flash
+    flashAlpha = 0.15;
+  }
+
+  function updateMilestone() {
+    if (milestoneState === 'off') return;
+    milestoneTimer++;
+
+    if (milestoneState === 'appear') {
+      // Slam in: 15 frames, scale 2.0→1.0 with overshoot
+      var t = Math.min(1, milestoneTimer / 15);
+      var ease = t < 0.7 ? t / 0.7 : 1 + (1 - (t - 0.7) / 0.3) * 0.15; // overshoot
+      milestoneScale = 2.0 - ease * 1.0;
+      milestoneAlpha = Math.min(1, t * 2);
+      if (milestoneTimer >= 15) { milestoneState = 'hold'; milestoneTimer = 0; milestoneScale = 1.0; milestoneAlpha = 1; }
+    } else if (milestoneState === 'hold') {
+      // Hold for 60 frames (~1s)
+      milestoneScale = 1.0 + Math.sin(milestoneTimer * 0.15) * 0.02; // gentle breathe
+      if (milestoneTimer >= 60) { milestoneState = 'fade'; milestoneTimer = 0; }
+    } else if (milestoneState === 'fade') {
+      // Fade out upward over 30 frames
+      var ft = Math.min(1, milestoneTimer / 30);
+      milestoneAlpha = 1 - ft;
+      milestoneY = (H / 2 - 60) - ft * 30;
+      if (milestoneTimer >= 30) { milestoneState = 'off'; milestoneAlpha = 0; }
+    }
+  }
+
+  function drawMilestone() {
+    if (milestoneState === 'off' || milestoneAlpha < 0.01) return;
+    ctx.save();
+    ctx.translate(W / 2, milestoneY);
+    ctx.scale(milestoneScale, milestoneScale);
+    ctx.globalAlpha = milestoneAlpha;
+    ctx.font = '700 42px "Segoe UI", system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = milestoneColor;
+    ctx.shadowBlur = 30;
+    ctx.fillStyle = milestoneColor;
+    ctx.fillText(milestoneText, 0, 0);
+    ctx.shadowBlur = 12;
+    ctx.fillText(milestoneText, 0, 0);
+    ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  // ── Near-Miss Effect ────────────────────────────────────────
+  let nearMissAlpha = 0;
+  let nearMissText = '';
+  let nearMissTimer = 0;
+
+  function triggerNearMiss() {
+    var clearance = parseInt(document.getElementById('nearMissGap').value, 10);
+    nearMissText = clearance <= 10 ? 'RAZOR!' : 'CLOSE!';
+    nearMissAlpha = 1;
+    nearMissTimer = 0;
+
+    // Intensity scales with how tight the miss was
+    var intensity = 1 - (clearance - 5) / 35; // 1.0 at 5px, 0.0 at 40px
+
+    // Streak particles trailing behind drone
+    var count = Math.round(4 + intensity * 4);
+    for (var i = 0; i < count; i++) {
+      FD.particles.push({
+        x: drone.x - 10 - i * 6,
+        y: drone.y + (Math.random() - 0.5) * 8,
+        vx: -(1.5 + Math.random() * 2),
+        vy: (Math.random() - 0.5) * 0.5,
+        life: 15 + Math.random() * 15, maxLife: 30,
+        r: 1 + Math.random() * 1.5,
+        hue: 190, sat: 100, lum: 70,
+        streak: true
+      });
+    }
+
+    // Sparkle burst at drone
+    for (var j = 0; j < 6; j++) {
+      var a = Math.random() * Math.PI * 2;
+      FD.particles.push({
+        x: drone.x + Math.cos(a) * 8,
+        y: drone.y + Math.sin(a) * 6,
+        vx: Math.cos(a) * (1 + Math.random()),
+        vy: Math.sin(a) * (1 + Math.random()),
+        life: 12 + Math.random() * 10, maxLife: 22,
+        r: 1 + Math.random(), hue: 180, sat: 80, lum: 80,
+        glow: true
+      });
+    }
+  }
+
+  function updateNearMiss() {
+    if (nearMissAlpha <= 0) return;
+    nearMissTimer++;
+    nearMissAlpha = Math.max(0, 1 - nearMissTimer / 30);
+  }
+
+  function drawNearMiss() {
+    if (nearMissAlpha <= 0.01) return;
+
+    // Text flash near drone
+    ctx.save();
+    ctx.globalAlpha = nearMissAlpha * 0.9;
+    ctx.font = '700 16px "Segoe UI", system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#00d4ff';
+    ctx.shadowColor = '#00d4ff';
+    ctx.shadowBlur = 8;
+    ctx.fillText(nearMissText, drone.x, drone.y - 25 - (nearMissTimer * 0.5));
+    ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+
+    // Edge pulse — brief cyan vignette
+    var pulseAlpha = nearMissAlpha * 0.12;
+    var edgeGrad = ctx.createRadialGradient(W / 2, H / 2, W * 0.3, W / 2, H / 2, W * 0.55);
+    edgeGrad.addColorStop(0, 'rgba(0,212,255,0)');
+    edgeGrad.addColorStop(1, 'rgba(0,212,255,' + pulseAlpha + ')');
+    ctx.fillStyle = edgeGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  // ── Speed Indicator ─────────────────────────────────────────
+  let speedFxEnabled = false;
+  let speedFxValue = 2.8;
+
+  function toggleSpeedFx() {
+    speedFxEnabled = !speedFxEnabled;
+    document.getElementById('speedFxBtn').textContent = 'Speed FX: ' + (speedFxEnabled ? 'ON' : 'OFF');
+  }
+
+  function onSpeedFxChange(val) {
+    speedFxValue = parseInt(val, 10) / 10;
+    document.getElementById('speedFxLabel').textContent = speedFxValue.toFixed(1);
+  }
+
+  function drawSpeedIndicator() {
+    if (!speedFxEnabled) return;
+    var speed = speedFxValue;
+    if (speed < 4.0) return;
+
+    var intensity = Math.min(1, (speed - 4.0) / 8.0); // 0 at 4, 1 at 12
+    var bandW = 30 + intensity * 20; // 30-50px edge band
+    var lineCount = Math.round(8 + intensity * 16); // 8-24 streaks per side
+
+    // Colour: cyan at moderate speed, warm orange at extreme
+    var r, g, b;
+    if (speed < 8) {
+      r = 0; g = Math.round(180 + intensity * 75); b = 255;
+    } else {
+      var warm = Math.min(1, (speed - 8) / 4);
+      r = Math.round(warm * 255); g = Math.round(180 - warm * 80); b = Math.round(255 - warm * 200);
+    }
+
+    ctx.save();
+    for (var side = 0; side < 2; side++) {
+      var baseX = side === 0 ? 0 : W - bandW;
+      for (var i = 0; i < lineCount; i++) {
+        var y = Math.random() * H;
+        var len = 15 + Math.random() * bandW * 0.8;
+        var lineAlpha = (0.05 + Math.random() * 0.15) * intensity;
+        // Streaks animate with globalTick for motion
+        var offsetY = (FD.globalTick * (1 + Math.random()) * 0.3) % H;
+        y = (y + offsetY) % H;
+
+        ctx.strokeStyle = 'rgba(' + r + ',' + g + ',' + b + ',' + lineAlpha + ')';
+        ctx.lineWidth = 0.5 + Math.random() * 1.5;
+        ctx.beginPath();
+        ctx.moveTo(baseX + Math.random() * (bandW - len), y);
+        ctx.lineTo(baseX + Math.random() * (bandW - len) + len, y);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
   function resetScene() {
     testBuildings = [];
     testPipes = [];
@@ -161,6 +375,10 @@
     FD.nukeActive = false;
     FD.pickups = [];
     FD.screenShake = 0;
+    milestoneState = 'off'; milestoneAlpha = 0;
+    nearMissAlpha = 0;
+    speedFxEnabled = false;
+    document.getElementById('speedFxBtn').textContent = 'Speed FX: OFF';
   }
 
   // ── Pipe Generation Preview ──────────────────────────────────
@@ -493,6 +711,8 @@
     }
 
     updatePipeScroll();
+    updateMilestone();
+    updateNearMiss();
     FD.updateParticles();
     FD.updateFireworks();
   }
@@ -550,6 +770,9 @@
     drawFlash();
     drawYouDied();
     FD.drawNukeOverlay();
+    drawSpeedIndicator();
+    drawMilestone();
+    drawNearMiss();
     drawPipeHUD();
     drawHitboxes();
 
@@ -587,6 +810,10 @@
   window.spawnPickup = spawnPickup;
   window.toggleMotion = toggleMotion;
   window.resetScene = resetScene;
+  window.triggerMilestone = triggerMilestone;
+  window.triggerNearMiss = triggerNearMiss;
+  window.toggleSpeedFx = toggleSpeedFx;
+  window.onSpeedFxChange = onSpeedFxChange;
   window.setPipeMode = setPipeMode;
   window.onPipeScoreChange = onPipeScoreChange;
   window.generatePipePreview = generatePipePreview;

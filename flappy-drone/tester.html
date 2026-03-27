@@ -83,6 +83,28 @@
     <button class="btn-fx" id="hitboxBtn" onclick="toggleHitboxes()">Hitboxes: OFF</button>
   </div>
 
+  <h2>Score Milestones</h2>
+  <div class="btn-grid">
+    <button class="btn-fx" onclick="triggerMilestone('NICE!','#00d4ff')">NICE! (10)</button>
+    <button class="btn-fx" onclick="triggerMilestone('INSANE!','#ffcc00')">INSANE! (25)</button>
+    <button class="btn-fx" onclick="triggerMilestone('LEGENDARY!','#ff4466')">LEGENDARY! (50)</button>
+    <button class="btn-fx" onclick="triggerMilestone('GODLIKE','#cc44ff')">GODLIKE (100)</button>
+  </div>
+
+  <h2>Near Miss</h2>
+  <div class="slider-row">
+    <label>Gap: <span id="nearMissLabel">15</span>px</label>
+    <input type="range" id="nearMissGap" min="5" max="40" value="15" oninput="document.getElementById('nearMissLabel').textContent=this.value">
+  </div>
+  <button class="btn-fx" onclick="triggerNearMiss()">Near Miss</button>
+
+  <h2>Speed Indicator</h2>
+  <div class="slider-row">
+    <label>Speed: <span id="speedFxLabel">2.8</span></label>
+    <input type="range" id="speedFxSlider" min="10" max="150" value="28" oninput="onSpeedFxChange(this.value)">
+  </div>
+  <button class="btn-fx" id="speedFxBtn" onclick="toggleSpeedFx()">Speed FX: OFF</button>
+
   <h2>Scene</h2>
   <div class="btn-row">
     <button class="btn-fx" id="motionBtn" onclick="toggleMotion()">Motion: ON</button>
