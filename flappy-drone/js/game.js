@@ -413,19 +413,28 @@
     drone.propPhase += 0.5;
 
     // --- Difficulty ramp ---
-    // Phase 1 (score 0-7): easy cruising
-    // Phase 2 (score 8+): buildings widen, gaps shrink, interval tightens
-    // Phase 3 (score 15+): speed ramps aggressively
+    var curSpeed, curGap, curInterval;
 
-    // Buildings get wider & closer from score 8, maxing around 35
-    var buildT = Math.max(0, Math.min(1, (score - 8) / 27));
-    var curGap = FD.GAP_SIZE - buildT * 60;               // 170 → 110
-    var curInterval = Math.round(FD.PIPE_INTERVAL - buildT * 60); // 160 → 100
-
-    // Speed ramps in from score 15, aggressive curve to score 45
-    var speedT = Math.max(0, Math.min(1, (score - 15) / 30));
-    speedT = speedT * speedT; // ease-in: sneaks up then punishes
-    var curSpeed = FD.PIPE_SPEED + speedT * 2.0;          // 2.1 → 4.1
+    if (activeMode === 'rush') {
+      // ZENA RUSH: starts fast, ramps brutally
+      var rushBuildT = Math.min(1, score / 20);
+      curGap = FD.GAP_SIZE - rushBuildT * 55;             // 170 → 115
+      curInterval = Math.round(FD.PIPE_INTERVAL - rushBuildT * 50); // 160 → 110
+      // Speed: starts at 3.2 (already fast), ramps to 4.5
+      var rushSpeedT = Math.min(1, score / 30);
+      curSpeed = 3.2 + rushSpeedT * 1.3;                  // 3.2 → 4.5
+    } else {
+      // CLASSIC: phased ramp
+      // Phase 1 (score 0-7): easy cruising
+      // Phase 2 (score 8+): buildings widen, gaps shrink, interval tightens
+      // Phase 3 (score 15+): speed ramps aggressively
+      var buildT = Math.max(0, Math.min(1, (score - 8) / 27));
+      curGap = FD.GAP_SIZE - buildT * 60;                 // 170 → 110
+      curInterval = Math.round(FD.PIPE_INTERVAL - buildT * 60); // 160 → 100
+      var speedT = Math.max(0, Math.min(1, (score - 15) / 30));
+      speedT = speedT * speedT;
+      curSpeed = FD.PIPE_SPEED + speedT * 2.0;            // 2.1 → 4.1
+    }
 
     // Spawn pipes — buildings get wider as difficulty increases
     if (frame % curInterval === 0) {
