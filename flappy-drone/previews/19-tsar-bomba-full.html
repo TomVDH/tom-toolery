@@ -235,23 +235,6 @@ function frame(now) {
       ctx.fillStyle = gg;
       ctx.beginPath(); ctx.arc(GX, cloudCenterY, glowR, 0, Math.PI*2); ctx.fill();
 
-      // === Rolling side clouds — UNDER cap, close to stem ===
-      if (capGrow > 0.2) {
-        const rollT = Math.min(1, (capGrow-0.2)/0.8);
-        const rollR = capR * 0.3 * rollT;
-        const rollBaseY = cloudCenterY + capR * 0.45;
-        const rollSpread = stemTopW * 0.8 + rollR * 0.6;
-        const rollDH = hShift, rollDL = lDrop * 0.7;
-        for (let side = -1; side <= 1; side += 2) {
-          const rx = GX + side * rollSpread;
-          const ry = rollBaseY + rollR * 0.2;
-          ctx.fillStyle = `hsla(${20-rollDH},75%,${Math.max(8,30-rollDL)}%,${alpha*0.55})`;
-          ctx.beginPath(); ctx.ellipse(rx, ry, rollR*1.1, rollR*0.7, 0, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = `hsla(${26-rollDH},90%,${Math.max(12,40-rollDL)}%,${alpha*0.4})`;
-          ctx.beginPath(); ctx.ellipse(rx, ry-rollR*0.1, rollR*0.65, rollR*0.45, 0, 0, Math.PI*2); ctx.fill();
-        }
-      }
-
       // === Cap layers — ALL fiery bright, near-opaque apocalypse ===
       const capAlpha = Math.min(1, alpha * 1.1);
       // Outermost — delayed darkening
@@ -285,9 +268,26 @@ function frame(now) {
         }
       }
 
-      // === Base ring / skirt ===
+      // === Base ring disc — OVER the cap ===
       ctx.fillStyle = `hsla(${20-hShift},80%,${Math.max(8,35-lDrop)}%,${alpha*0.7})`;
       ctx.beginPath(); ctx.ellipse(GX, cloudCenterY+capR*0.55, capRx*1.2, capR*0.22, 0, 0, Math.PI*2); ctx.fill();
+
+      // === Rolling side clouds — over cap, close to stem ===
+      if (capGrow > 0.2) {
+        const rollT = Math.min(1, (capGrow-0.2)/0.8);
+        const rollR = capR * 0.3 * rollT;
+        const rollBaseY = cloudCenterY + capR * 0.45;
+        const rollSpread = stemTopW * 0.8 + rollR * 0.6;
+        const rollDH = hShift, rollDL = lDrop * 0.7;
+        for (let side = -1; side <= 1; side += 2) {
+          const rx = GX + side * rollSpread;
+          const ry = rollBaseY + rollR * 0.2;
+          ctx.fillStyle = `hsla(${20-rollDH},75%,${Math.max(8,30-rollDL)}%,${alpha*0.55})`;
+          ctx.beginPath(); ctx.ellipse(rx, ry, rollR*1.1, rollR*0.7, 0, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = `hsla(${26-rollDH},90%,${Math.max(12,40-rollDL)}%,${alpha*0.4})`;
+          ctx.beginPath(); ctx.ellipse(rx, ry-rollR*0.1, rollR*0.65, rollR*0.45, 0, 0, Math.PI*2); ctx.fill();
+        }
+      }
 
       // === Concentric cloud bands (6 for Tsar Bomba) ===
       const bandNow = elapsed / 1000;
@@ -299,7 +299,7 @@ function frame(now) {
         const finalY = cloudCenterY - capR*(0.6 - t01*1.1);
         const startY = cloudCenterY + capR*0.5;
         const bandY = startY + (finalY-startY)*bandAge + Math.sin(bandNow*(0.4+i*0.2)+i*2.3)*capR*0.025;
-        const widthAtY = capRx * (0.5 + t01*0.9) * bandAge;
+        const widthAtY = capRx * (0.85 + t01*0.5) * bandAge;
         const fade = (0.6 + t01*0.4) * bandAge;
         const pulse = 0.3 + 0.1*Math.sin(bandNow*(1.2+i*0.4)+i*1.7);
         const bandAlpha = alpha * pulse * fade;

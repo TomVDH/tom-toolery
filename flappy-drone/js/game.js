@@ -51,8 +51,8 @@
 
   // --- Zena Rush timer ---
   const RUSH_START_TIME = 20;    // seconds to start
-  const RUSH_BONUS_TIME = 8;     // seconds added per 5 gaps
-  const RUSH_BONUS_EVERY = 5;    // gates per bonus
+  const RUSH_BONUS_TIME = 5;     // seconds added per 3 gaps
+  const RUSH_BONUS_EVERY = 3;    // gates per bonus
   let rushTimer = 0;             // seconds remaining
   let rushLastBonus = 0;         // last score that triggered bonus
   let rushBonusFlash = 0;        // flash timer for bonus UI feedback
@@ -413,19 +413,19 @@
     drone.propPhase += 0.5;
 
     // --- Difficulty ramp ---
-    // Phase 1 (score 0-14): easy, standard buildings
-    // Phase 2 (score 15+): wider buildings, closer together (gap shrinks, interval tightens)
-    // Phase 3 (score 25+): speed ramps in smoothly on top of everything else
+    // Phase 1 (score 0-7): easy cruising
+    // Phase 2 (score 8+): buildings widen, gaps shrink, interval tightens
+    // Phase 3 (score 15+): speed ramps aggressively
 
-    // Buildings get wider & closer from score 15, maxing around 40
-    var buildT = Math.max(0, Math.min(1, (score - 15) / 25));
-    var curGap = FD.GAP_SIZE - buildT * 55;               // 170 → 115
-    var curInterval = Math.round(FD.PIPE_INTERVAL - buildT * 55); // 160 → 105
+    // Buildings get wider & closer from score 8, maxing around 35
+    var buildT = Math.max(0, Math.min(1, (score - 8) / 27));
+    var curGap = FD.GAP_SIZE - buildT * 60;               // 170 → 110
+    var curInterval = Math.round(FD.PIPE_INTERVAL - buildT * 60); // 160 → 100
 
-    // Speed ramps in from score 25, smooth curve to score 60
-    var speedT = Math.max(0, Math.min(1, (score - 25) / 35));
-    speedT = speedT * speedT; // ease-in: slow start, aggressive end
-    var curSpeed = FD.PIPE_SPEED + speedT * 1.8;          // 2.1 → 3.9
+    // Speed ramps in from score 15, aggressive curve to score 45
+    var speedT = Math.max(0, Math.min(1, (score - 15) / 30));
+    speedT = speedT * speedT; // ease-in: sneaks up then punishes
+    var curSpeed = FD.PIPE_SPEED + speedT * 2.0;          // 2.1 → 4.1
 
     // Spawn pipes — buildings get wider as difficulty increases
     if (frame % curInterval === 0) {
