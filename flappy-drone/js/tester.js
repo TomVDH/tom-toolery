@@ -270,15 +270,16 @@
   }
 
   // Pre-generate stable streak data (40 streaks per side)
+  // Each streak has a fixed Y and oscillates horizontally
   var speedStreaks = [];
   for (var si = 0; si < 80; si++) {
     speedStreaks.push({
-      baseY: Math.random() * H,
-      xOff: Math.random() * 0.6,        // offset within band (0-0.6)
-      len: 0.3 + Math.random() * 0.7,   // length as ratio of bandW
-      alpha: 0.06 + Math.random() * 0.14,
-      lineW: 0.5 + Math.random() * 1.5,
-      scrollSpeed: 0.8 + Math.random() * 1.4  // individual scroll rate
+      y: Math.random() * H,
+      baseLen: 4 + Math.random() * 12,    // short dashes (4-16px)
+      alpha: 0.08 + Math.random() * 0.18,
+      lineW: 0.5 + Math.random() * 1.0,
+      oscSpeed: 1.5 + Math.random() * 3,   // horizontal oscillation rate
+      oscPhase: Math.random() * Math.PI * 2
     });
   }
 
@@ -288,8 +289,8 @@
     if (speed < 4.0) return;
 
     var intensity = Math.min(1, (speed - 4.0) / 8.0); // 0 at 4, 1 at 12
-    var bandW = 30 + intensity * 20;
-    var visibleCount = Math.round((8 + intensity * 32)); // how many streaks to draw per side
+    var bandW = 25 + intensity * 15;                    // 25-40px edge band
+    var visibleCount = Math.round(6 + intensity * 28);  // 6-34 streaks per side
 
     // Colour: cyan at moderate speed, warm orange at extreme
     var cr, cg, cb;
@@ -301,21 +302,27 @@
     }
 
     ctx.save();
+    var tick = FD.globalTick;
     for (var side = 0; side < 2; side++) {
-      var baseX = side === 0 ? 0 : W - bandW;
-      var offset = side * 40; // use second half of array for right side
+      var offset = side * 40;
       for (var i = 0; i < visibleCount && i < 40; i++) {
         var s = speedStreaks[offset + i];
-        // Smooth vertical scroll based on globalTick
-        var y = (s.baseY + FD.globalTick * s.scrollSpeed * speed * 0.15) % H;
-        var len = s.len * bandW;
-        var x1 = baseX + s.xOff * (bandW - len);
+        // Horizontal oscillation — streaks jitter back and forth at screen edge
+        var oscX = Math.sin(tick * s.oscSpeed * 0.02 + s.oscPhase) * bandW * 0.4;
+        var len = s.baseLen * (0.6 + intensity * 0.8); // longer at higher speed
+
+        var x1;
+        if (side === 0) {
+          x1 = oscX + bandW * 0.2;                      // left edge
+        } else {
+          x1 = W - bandW * 0.2 - len + oscX;            // right edge
+        }
 
         ctx.strokeStyle = 'rgba(' + cr + ',' + cg + ',' + cb + ',' + (s.alpha * intensity) + ')';
         ctx.lineWidth = s.lineW;
         ctx.beginPath();
-        ctx.moveTo(x1, y);
-        ctx.lineTo(x1 + len, y);
+        ctx.moveTo(x1, s.y);
+        ctx.lineTo(x1 + len, s.y);
         ctx.stroke();
       }
     }
@@ -337,7 +344,7 @@
     FD.nukeActive = false;
     FD.pickups = [];
     FD.screenShake = 0;
-    milestoneState = 'off'; milestoneAlpha = 0;
+    milestoneState = 'off'; milestoneTimer = 0;
     nearMissAlpha = 0;
     speedFxEnabled = false;
     document.getElementById('speedFxBtn').textContent = 'Speed FX: OFF';
