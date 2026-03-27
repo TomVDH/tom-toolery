@@ -235,28 +235,46 @@ function frame(now) {
       ctx.fillStyle = gg;
       ctx.beginPath(); ctx.arc(GX, cloudCenterY, glowR, 0, Math.PI*2); ctx.fill();
 
-      // === Cap layers (5 layers) — brighter starts, delayed outer darkening ===
-      // Outermost — delayed darkening, starts brighter
-      ctx.fillStyle = `hsla(${12-outerHS},60%,${Math.max(5,28-outerLD)}%,${alpha})`;
+      // === Rolling side clouds — UNDER cap, close to stem ===
+      if (capGrow > 0.2) {
+        const rollT = Math.min(1, (capGrow-0.2)/0.8);
+        const rollR = capR * 0.3 * rollT;
+        const rollBaseY = cloudCenterY + capR * 0.45;
+        const rollSpread = stemTopW * 0.8 + rollR * 0.6;
+        const rollDH = hShift, rollDL = lDrop * 0.7;
+        for (let side = -1; side <= 1; side += 2) {
+          const rx = GX + side * rollSpread;
+          const ry = rollBaseY + rollR * 0.2;
+          ctx.fillStyle = `hsla(${20-rollDH},75%,${Math.max(8,30-rollDL)}%,${alpha*0.55})`;
+          ctx.beginPath(); ctx.ellipse(rx, ry, rollR*1.1, rollR*0.7, 0, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = `hsla(${26-rollDH},90%,${Math.max(12,40-rollDL)}%,${alpha*0.4})`;
+          ctx.beginPath(); ctx.ellipse(rx, ry-rollR*0.1, rollR*0.65, rollR*0.45, 0, 0, Math.PI*2); ctx.fill();
+        }
+      }
+
+      // === Cap layers — ALL fiery bright, near-opaque apocalypse ===
+      const capAlpha = Math.min(1, alpha * 1.1);
+      // Outermost — delayed darkening
+      ctx.fillStyle = `hsla(${15-outerHS},90%,${Math.max(15,42-outerLD*0.6)}%,${capAlpha})`;
       ctx.beginPath(); ctx.ellipse(GX, cloudCenterY, capRx*1.15, capR*1.0, 0, 0, Math.PI*2); ctx.fill();
-      // Layer 2 — also delayed
-      ctx.fillStyle = `hsla(${16-outerHS},70%,${Math.max(8,35-outerLD)}%,${alpha})`;
+      // Layer 2
+      ctx.fillStyle = `hsla(${20-outerHS},95%,${Math.max(18,48-outerLD*0.6)}%,${capAlpha})`;
       ctx.beginPath(); ctx.ellipse(GX, cloudCenterY-capR*0.03, capRx*0.95, capR*0.85, 0, 0, Math.PI*2); ctx.fill();
-      // Layer 3 — brighter start
-      ctx.fillStyle = `hsla(${22-hShift},85%,${Math.max(10,44-lDrop)}%,${alpha})`;
+      // Layer 3
+      ctx.fillStyle = `hsla(${26-hShift},100%,${Math.max(22,54-lDrop*0.5)}%,${capAlpha})`;
       ctx.beginPath(); ctx.ellipse(GX, cloudCenterY-capR*0.06, capRx*0.75, capR*0.7, 0, 0, Math.PI*2); ctx.fill();
-      // Layer 4 — bright inner, boosted
-      ctx.fillStyle = `hsla(${30-hShift},100%,${Math.max(15,55-lDrop)}%,${alpha})`;
+      // Layer 4
+      ctx.fillStyle = `hsla(${32-hShift},100%,${Math.max(28,62-lDrop*0.4)}%,${capAlpha})`;
       ctx.beginPath(); ctx.ellipse(GX, cloudCenterY-capR*0.08, capRx*0.52, capR*0.52, 0, 0, Math.PI*2); ctx.fill();
-      // Layer 5 — hot core (heavily delayed darkening)
-      const coreDarkDelay = elapsed > 6000 ? Math.min(1, (elapsed-6000)/2500) : 0;
-      const coreAlpha = alpha * Math.max(0.1, 1 - coreDarkDelay);
-      ctx.fillStyle = `hsla(40,100%,${Math.max(22,75-lDrop*1.5)}%,${coreAlpha})`;
+      // Hot core — stays blazing
+      const coreDarkDelay = elapsed > 6500 ? Math.min(1, (elapsed-6500)/2500) : 0;
+      const coreAlpha = capAlpha * Math.max(0.15, 1 - coreDarkDelay);
+      ctx.fillStyle = `hsla(42,100%,${Math.max(30,78-lDrop)}%,${coreAlpha})`;
       ctx.beginPath(); ctx.ellipse(GX, cloudCenterY-capR*0.1, capRx*0.3, capR*0.3, 0, 0, Math.PI*2); ctx.fill();
 
-      // === Double fireball — white-hot inner core (Tsar Bomba signature) ===
+      // === Double fireball — white-hot inner core ===
       if (elapsed < 3500) {
-        const wa = Math.min(1, (1 - Math.max(0, elapsed-500)/3000)) * alpha;
+        const wa = Math.min(1, (1 - Math.max(0, elapsed-500)/3000)) * capAlpha;
         ctx.fillStyle = `rgba(255,255,230,${wa*0.8})`;
         ctx.beginPath(); ctx.ellipse(GX, cloudCenterY-capR*0.05, capRx*0.18, capR*0.18, 0, 0, Math.PI*2); ctx.fill();
         // Inner white flash
@@ -268,25 +286,8 @@ function frame(now) {
       }
 
       // === Base ring / skirt ===
-      ctx.fillStyle = `hsla(${15-hShift},70%,${Math.max(5,28-lDrop)}%,${alpha*0.7})`;
+      ctx.fillStyle = `hsla(${20-hShift},80%,${Math.max(8,35-lDrop)}%,${alpha*0.7})`;
       ctx.beginPath(); ctx.ellipse(GX, cloudCenterY+capR*0.55, capRx*1.2, capR*0.22, 0, 0, Math.PI*2); ctx.fill();
-
-      // === Rolling side clouds — billow from under cap ===
-      if (capGrow > 0.2) {
-        const rollT = Math.min(1, (capGrow-0.2)/0.8);
-        const rollR = capR * 0.35 * rollT;
-        const baseRingY = cloudCenterY + capR * 0.55;
-        const rollSpread = capRx * 0.7 * rollT;
-        const rollDH = hShift, rollDL = lDrop * 0.7;
-        for (let side = -1; side <= 1; side += 2) {
-          const rx = GX + side * rollSpread;
-          const ry = baseRingY + rollR * 0.3;
-          ctx.fillStyle = `hsla(${18-rollDH},70%,${Math.max(6,26-rollDL)}%,${alpha*0.6})`;
-          ctx.beginPath(); ctx.ellipse(rx, ry, rollR*1.2, rollR*0.8, 0, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = `hsla(${24-rollDH},85%,${Math.max(10,36-rollDL)}%,${alpha*0.5})`;
-          ctx.beginPath(); ctx.ellipse(rx, ry-rollR*0.1, rollR*0.7, rollR*0.5, 0, 0, Math.PI*2); ctx.fill();
-        }
-      }
 
       // === Concentric cloud bands (6 for Tsar Bomba) ===
       const bandNow = elapsed / 1000;
