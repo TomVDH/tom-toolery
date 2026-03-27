@@ -317,21 +317,37 @@
     drone.angle += (targetAngle - drone.angle) * 0.12;
     drone.propPhase += 0.5;
 
-    // Difficulty ramp based on score
-    var diffT = Math.min(1, score / 50); // 0 at score 0, 1 at score 50+
-    var curSpeed = FD.PIPE_SPEED + diffT * 1.6;          // 2.1 → 3.7
-    var curGap = FD.GAP_SIZE - diffT * 50;               // 170 → 120
-    var curInterval = Math.round(FD.PIPE_INTERVAL - diffT * 50); // 160 → 110
+    // --- Difficulty ramp ---
+    // Phase 1 (score 0-14): easy, standard buildings
+    // Phase 2 (score 15+): wider buildings, closer together (gap shrinks, interval tightens)
+    // Phase 3 (score 25+): speed ramps in smoothly on top of everything else
 
-    // Spawn pipes — varied width buildings
+    // Buildings get wider & closer from score 15, maxing around 40
+    var buildT = Math.max(0, Math.min(1, (score - 15) / 25));
+    var curGap = FD.GAP_SIZE - buildT * 55;               // 170 → 115
+    var curInterval = Math.round(FD.PIPE_INTERVAL - buildT * 55); // 160 → 105
+
+    // Speed ramps in from score 25, smooth curve to score 60
+    var speedT = Math.max(0, Math.min(1, (score - 25) / 35));
+    speedT = speedT * speedT; // ease-in: slow start, aggressive end
+    var curSpeed = FD.PIPE_SPEED + speedT * 1.8;          // 2.1 → 3.9
+
+    // Spawn pipes — buildings get wider as difficulty increases
     if (frame % curInterval === 0) {
       var minTop = 70;
       var maxTop = H - curGap - FD.GROUND_H - 70;
       var topH   = minTop + Math.random() * (maxTop - minTop);
       var id     = Math.floor(frame / curInterval);
-      // Width variation: 60% standard, 25% wide, 15% narrow
+      // Width: before score 15 = standard only; after = increasingly wide
       var widthRoll = ((id * 31 + 17) * 53) % 100;
-      var pipeW = widthRoll < 60 ? FD.PIPE_WIDTH : (widthRoll < 85 ? FD.PIPE_WIDTH + 24 : FD.PIPE_WIDTH - 12);
+      var pipeW;
+      if (score < 15) {
+        pipeW = FD.PIPE_WIDTH; // all standard before 15
+      } else {
+        // More wide buildings as score climbs: wide chance 20% → 50%
+        var wideChance = 20 + buildT * 30;
+        pipeW = widthRoll < (100 - wideChance) ? FD.PIPE_WIDTH : FD.PIPE_WIDTH + 20 + Math.floor(buildT * 16);
+      }
       pipes.push(
         { x: W + 10, w: pipeW, y: 0,             h: topH,                                   fromTop: true,  scored: false, id: id },
         { x: W + 10, w: pipeW, y: topH + curGap, h: H - FD.GROUND_H - topH - curGap, fromTop: false, scored: false, id: id }
