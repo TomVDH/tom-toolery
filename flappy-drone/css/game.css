@@ -1,16 +1,23 @@
 /* game.css — Shared styles for Flappy Drone (extracted from index.html) */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
+html { touch-action: manipulation; }
 body {
   background: #060610;
   display: flex; flex-direction: column; justify-content: center; align-items: center;
-  height: 100vh; overflow: hidden;
+  height: 100vh; height: 100dvh; overflow: hidden;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   user-select: none; -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
 }
 #wrap {
   position: relative;
   width: 620px; height: 640px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
+  aspect-ratio: 620 / 640;
   border: 2px solid #1a1a3a;
   border-radius: 14px;
   box-shadow: 0 0 80px #00d4ff08, 0 8px 40px #00000090;
@@ -163,4 +170,49 @@ canvas { display: block; width: 100%; height: 100%; }
   font-family: 'Courier New', monospace;
   font-size: 9px; color: #556; letter-spacing: 0.5px;
   pointer-events: auto; cursor: default; z-index: 5;
+}
+
+/* --- Mobile responsive --- */
+@media (max-width: 660px) {
+  #wrap {
+    width: 100%; max-width: calc(100vw - 8px);
+    height: auto;
+    border-radius: 8px;
+  }
+  .title { font-size: 28px; letter-spacing: 4px; }
+  .slogan { font-size: 10px; margin-bottom: 18px; }
+  .screen#menuScreen { padding-top: 60px; }
+  .mode-arrow, .drone-arrow {
+    font-size: 18px; padding: 10px 14px; min-width: 44px; min-height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .mode-label { font-size: 12px; min-width: 120px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  .drone-label { font-size: 10px; min-width: 120px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  .prompt { bottom: 70px; font-size: 13px; }
+  .hud { font-size: 32px; top: 14px; }
+  .hud-timer { font-size: 15px; top: 46px; }
+  .score-value { font-size: 56px; }
+  .score-prompt { font-size: 14px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+  .copyright { font-size: 8px; margin-top: 6px; }
+}
+
+@media (max-width: 400px) {
+  .title { font-size: 22px; letter-spacing: 3px; }
+  .screen#menuScreen { padding-top: 40px; }
+  .slogan { font-size: 9px; margin-bottom: 12px; }
+  .menu-section { margin-bottom: 6px; }
+  .mode-desc { margin-bottom: 14px; }
+  .prompt { bottom: 50px; }
+}
+
+/* Landscape mobile: prioritize height */
+@media (max-height: 500px) {
+  #wrap { max-height: calc(100vh - 20px); max-height: calc(100dvh - 20px); }
+  .screen#menuScreen { padding-top: 30px; }
+  .title { font-size: 22px; }
+  .slogan { font-size: 9px; margin-bottom: 8px; }
+  .menu-section { margin-bottom: 4px; }
+  .mode-desc { margin-bottom: 10px; }
+  .prompt { bottom: 40px; font-size: 12px; }
+  .copyright { display: none; }
 }

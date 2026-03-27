@@ -143,6 +143,8 @@
   });
   canvas.addEventListener('click', flap);
   canvas.addEventListener('touchstart', function (e) { e.preventDefault(); flap(); }, { passive: false });
+  // Prevent pull-to-refresh and scroll bouncing on mobile
+  document.addEventListener('touchmove', function (e) { e.preventDefault(); }, { passive: false });
 
   // --- Drone cycle (left/right arrow keys or click the label) ---
   function cycleDrone(dir) {
