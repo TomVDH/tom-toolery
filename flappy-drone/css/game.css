@@ -114,7 +114,7 @@ canvas { display: block; width: 100%; height: 100%; }
 }
 /* Drone renders on canvas below pickers — prompt sits below drone */
 .prompt {
-  position: absolute; bottom: 100px; left: 0; right: 0;
+  position: absolute; bottom: 60px; left: 0; right: 0;
   text-align: center;
   font-size: 14px; color: #445; letter-spacing: 2px;
   animation: pulse 2.5s ease-in-out infinite;
