@@ -137,15 +137,6 @@
       ctx.fillRect(x, groundY + GROUND_H / 2, 12, 2);
     }
 
-    // Kerb lights — small amber dots along sidewalk edge
-    ctx.fillStyle = 'rgba(255, 180, 60, 0.35)';
-    for (var kx = -off; kx < W; kx += 48) {
-      ctx.fillRect(kx + 2, groundY + 7, 3, 3);
-      // Subtle glow
-      ctx.fillStyle = 'rgba(255, 180, 60, 0.08)';
-      ctx.fillRect(kx - 2, groundY + 5, 11, 8);
-      ctx.fillStyle = 'rgba(255, 180, 60, 0.35)';
-    }
 
   };
 
