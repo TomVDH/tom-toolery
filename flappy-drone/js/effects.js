@@ -676,15 +676,12 @@
 
     ctx.save();
     var tick = FD.globalTick;
-    for (var side = 0; side < 2; side++) {
-      var offset = side * 40;
-      for (var i = 0; i < visibleCount && i < 40; i++) {
-        var s = FD.speedStreaks[offset + i];
+    // Left side only — dynamic speed lines streaming from the left edge
+    for (var i = 0; i < visibleCount && i < 80; i++) {
+        var s = FD.speedStreaks[i];
         var oscX = Math.sin(tick * s.oscSpeed * 0.02 + s.oscPhase) * bandW * 0.35;
-        var len = s.baseLen * (0.5 + intensity * 0.5); // max ~7.5px at full intensity
-        var x1;
-        if (side === 0) { x1 = oscX + bandW * 0.15; }
-        else { x1 = W - bandW * 0.15 - len + oscX; }
+        var len = s.baseLen * (0.5 + intensity * 0.5);
+        var x1 = oscX + bandW * 0.15;
 
         ctx.strokeStyle = 'rgba(' + cr + ',' + cg + ',' + cb + ',' + (s.alpha * intensity) + ')';
         ctx.lineWidth = s.lineW;
@@ -692,7 +689,6 @@
         ctx.moveTo(x1, s.y);
         ctx.lineTo(x1 + len, s.y);
         ctx.stroke();
-      }
     }
     ctx.restore();
   };

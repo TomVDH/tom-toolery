@@ -27,14 +27,67 @@
 
   let testBuildings = [];
 
-  const drone = { x: W / 2, y: H / 2 - 40, vy: 0, angle: 0, propPhase: 0 };
+  const drone = { x: W / 2, y: H / 2 - 40, vx: 0, vy: 0, angle: 0, propPhase: 0 };
+
+  // --- WASD / Arrow key tracking ---
+  var keysDown = {};
+  var wasdEnabled = false;
+  document.addEventListener('keydown', function (e) {
+    if (!wasdEnabled) return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+    var k = e.key.toLowerCase();
+    if (k === 'w' || k === 'a' || k === 's' || k === 'd' ||
+        k === 'arrowup' || k === 'arrowdown' || k === 'arrowleft' || k === 'arrowright') {
+      keysDown[k] = true;
+      e.preventDefault();
+    }
+  });
+  document.addEventListener('keyup', function (e) {
+    keysDown[e.key.toLowerCase()] = false;
+  });
+
+  function toggleWASD(on) {
+    wasdEnabled = on;
+    keysDown = {};
+    var hint = document.getElementById('wasdHint');
+    if (hint) hint.textContent = on ? 'Use WASD or Arrow keys to fly' : 'Drone idles automatically';
+  }
+
+  // --- Parallax speed multipliers + layer visibility ---
+  var parSpeedBack = 0.6, parSpeedFront = 1.0, parSpeedGround = 1.0, parSpeedMtn = 0.2;
+  var layerVisible = { mountains: true, backCity: true, frontCity: true, ground: true };
+  var parScale = 1.0;
+
+  function setParallaxSpeed(layer, val) {
+    var v = parseInt(val, 10) / 100;
+    if (layer === 'back') { parSpeedBack = v; document.getElementById('parBackLabel').textContent = v.toFixed(1); }
+    else if (layer === 'front') { parSpeedFront = v; document.getElementById('parFrontLabel').textContent = v.toFixed(1); }
+    else if (layer === 'ground') { parSpeedGround = v; document.getElementById('parGroundLabel').textContent = v.toFixed(1); }
+    else if (layer === 'mountains') { parSpeedMtn = v; document.getElementById('parMtnLabel').textContent = v.toFixed(1); }
+  }
+
+  function toggleLayer(layer, on) {
+    layerVisible[layer] = on;
+  }
+
+  function setParallaxScale(val) {
+    parScale = parseInt(val, 10) / 100;
+    document.getElementById('parScaleLabel').textContent = parScale.toFixed(1);
+  }
+
+  // --- Aurora intensity ---
+  function setAuroraIntensity(val) {
+    var v = parseInt(val, 10);
+    FD.auroraTargetIntensity = v / 100;
+    FD.auroraIntensity = v / 100; // immediate for tester
+    document.getElementById('auroraLabel').textContent = v;
+  }
 
   // --- Drone selection ---
   function selectDrone(id) {
     activeDrone = id;
-    document.querySelectorAll('[id^="drone-"]').forEach(function(b) { b.classList.remove('drone-active'); });
-    var el = document.getElementById('drone-' + id);
-    if (el) el.classList.add('drone-active');
+    var sel = document.getElementById('droneSelect');
+    if (sel) sel.value = id;
   }
 
   // --- Effect triggers ---
@@ -79,10 +132,38 @@
     });
   }
 
+  var forcedCountdownStyle = -1; // -1 = random
+
+  function setCountdownStyle(val) {
+    forcedCountdownStyle = val === 'random' ? -1 : parseInt(val, 10);
+  }
+
   function triggerCountdown() {
     countdownActive = true;
     countdownStart = performance.now();
-    FD._droneAnimTriggered = false; // reset so a new random style is picked
+    FD._droneAnimTriggered = false;
+    if (forcedCountdownStyle >= 0) {
+      FD._forcedDroneAnim = forcedCountdownStyle;
+    } else {
+      delete FD._forcedDroneAnim;
+    }
+  }
+
+  function triggerCountdownSegment(phase) {
+    countdownActive = true;
+    FD._droneAnimTriggered = false;
+    if (forcedCountdownStyle >= 0) FD._forcedDroneAnim = forcedCountdownStyle;
+    else delete FD._forcedDroneAnim;
+    // Map phase to a start time within the 4s countdown
+    if (phase === 'ready') countdownStart = performance.now();
+    else if (phase === 'set') countdownStart = performance.now() - FD.READY_MS * 0.38;
+    else if (phase === 'drone') countdownStart = performance.now() - FD.READY_MS * 0.75;
+  }
+
+  function triggerVictory() {
+    youDiedActive = true;
+    youDiedTimer = 0;
+    FD.deathText = 'ZENAVLLE IS SAVED';
   }
 
   function triggerNuke() {
@@ -91,6 +172,15 @@
     FD.screenShake = 50;
     FD.nukeGx = W / 2 + (Math.random() - 0.5) * 80;
     FD.nukeGy = H - GROUND_H;
+
+    // Canvas nuke glow (matches game's #wrap.nuke-glow)
+    canvas.classList.add('nuke-glow');
+    canvas.classList.remove('nuke-glow-fade');
+    setTimeout(function () {
+      canvas.classList.remove('nuke-glow');
+      canvas.classList.add('nuke-glow-fade');
+      setTimeout(function () { canvas.classList.remove('nuke-glow-fade'); }, 3000);
+    }, 4000);
 
     // Debris flies all over screen
     for (let i = 0; i < 60; i++) {
@@ -122,19 +212,87 @@
     }, 600);
   }
 
+  var SIGN_TEXTS = ['ZENATECH','IQ NANO','ZD1000','SKYNET','APEX','VOLT','NIMBUS','HOVER','DRONE CO'];
+  var SIGN_TYPES = ['roof','side','stacked'];
+
   function spawnSignBuilding(text, color) {
-    const bw = 56;
-    const bx = W / 2 - bw / 2 + (Math.random() - 0.5) * 200;
-    const bh = 120 + Math.random() * 100;
-    const topY = H - GROUND_H - bh;
+    var bw = 50 + Math.random() * 30;
+    var bx = 60 + Math.random() * (W - 180);
+    var bh = 120 + Math.random() * 120;
+    var topY = H - GROUND_H - bh;
     testBuildings.push({
-      x: bx, w: bw, topY, height: bh, fromTop: false,
+      x: bx, w: bw, topY: topY, height: bh, fromTop: false,
       signText: text, signColor: color,
       signType: 'roof',
-      seed: ((testBuildings.length * 2654435761) >>> 0)
+      seed: ((testBuildings.length * 2654435761 + performance.now()) >>> 0),
+      _isSign: true
     });
-    // Keep max 6 buildings
-    if (testBuildings.length > 6) testBuildings.shift();
+    if (testBuildings.length > 12) testBuildings.shift();
+  }
+
+  // Sign spawner using dropdown values
+  function spawnSign() {
+    var textSel = document.getElementById('signSelect');
+    var typeSel = document.getElementById('signType');
+    var text = textSel ? textSel.value : 'ZENATECH';
+    var sType = typeSel ? typeSel.value : 'random';
+    if (sType === 'random') sType = SIGN_TYPES[Math.floor(Math.random() * SIGN_TYPES.length)];
+    // Random hue color
+    var hue = Math.floor(Math.random() * 360);
+    var color = 'hsl(' + hue + ',100%,65%)';
+    var bw = 50 + Math.random() * 30;
+    var bx = 60 + Math.random() * (W - 180);
+    var bh = 120 + Math.random() * 120;
+    var topY = H - GROUND_H - bh;
+    testBuildings.push({
+      x: bx, w: bw, topY: topY, height: bh, fromTop: false,
+      signText: text, signColor: color, signType: sType,
+      seed: ((testBuildings.length * 2654435761 + performance.now()) >>> 0),
+      _isSign: true
+    });
+    if (testBuildings.length > 12) testBuildings.shift();
+  }
+
+  // Building spawner
+  function spawnTestBuilding() {
+    var styleSel = document.getElementById('buildingStyle');
+    var style = styleSel ? styleSel.value : 'random';
+    var seed = ((testBuildings.length * 2654435761 + performance.now()) >>> 0);
+    var bx = 60 + Math.random() * (W - 180);
+    var bh = 100 + Math.random() * 180;
+    var topY = H - GROUND_H - bh;
+    var bw, ledges, antenna, signText, signColor, signType;
+
+    switch (style) {
+      case 'narrow': bw = 40 + Math.random() * 16; break;
+      case 'wide': bw = 76 + Math.random() * 25; break;
+      default: bw = 44 + Math.random() * 45; break;
+    }
+
+    ledges = (style === 'ledges' || style === 'full' || (style === 'random' && Math.random() < 0.3));
+    antenna = (style === 'antenna' || style === 'full' || (style === 'random' && Math.random() < 0.15));
+
+    if (style === 'sign' || style === 'full' || (style === 'random' && Math.random() < 0.3)) {
+      signText = SIGN_TEXTS[Math.floor(Math.random() * SIGN_TEXTS.length)];
+      signColor = 'hsl(' + Math.floor(Math.random() * 360) + ',100%,65%)';
+      signType = SIGN_TYPES[Math.floor(Math.random() * SIGN_TYPES.length)];
+    }
+
+    testBuildings.push({
+      x: bx, w: bw, topY: topY, height: bh, fromTop: false,
+      seed: seed, ledges: ledges, antenna: antenna,
+      signText: signText, signColor: signColor, signType: signType,
+      _isSign: false
+    });
+    if (testBuildings.length > 12) testBuildings.shift();
+  }
+
+  function clearTestBuildings() {
+    testBuildings = testBuildings.filter(function (b) { return b._isSign; });
+  }
+
+  function clearTestSigns() {
+    testBuildings = testBuildings.filter(function (b) { return !b._isSign; });
   }
 
   function spawnPickup(typeId) {
@@ -298,6 +456,14 @@
     if (actualDelta < minJump) {
       var pushDir = (newGapCenter >= pipeLastGapY) ? 1 : -1;
       newGapCenter = pipeLastGapY + pushDir * minJump;
+      newGapCenter = Math.max(minTop + curGap / 2, Math.min(maxTop + curGap / 2, newGapCenter));
+      topH = newGapCenter - curGap / 2;
+    }
+    // Max divergence clamp — prevent adjacent gaps from being unreachable
+    var maxShift = curGap * 0.7;
+    var shift = newGapCenter - pipeLastGapY;
+    if (Math.abs(shift) > maxShift) {
+      newGapCenter = pipeLastGapY + (shift > 0 ? maxShift : -maxShift);
       newGapCenter = Math.max(minTop + curGap / 2, Math.min(maxTop + curGap / 2, newGapCenter));
       topH = newGapCenter - curGap / 2;
     }
@@ -465,8 +631,41 @@
   // --- Update ---
   function update() {
     drone.propPhase += 0.5;
-    drone.y = H / 2 - 40 + Math.sin(FD.globalTick * 0.025) * 14;
-    drone.angle = Math.sin(FD.globalTick * 0.018) * 0.04;
+
+    if (wasdEnabled) {
+      // WASD / arrow key movement
+      var accel = 0.6;
+      var friction = 0.88;
+      if (keysDown['w'] || keysDown['arrowup']) drone.vy -= accel;
+      if (keysDown['s'] || keysDown['arrowdown']) drone.vy += accel;
+      if (keysDown['a'] || keysDown['arrowleft']) drone.vx -= accel;
+      if (keysDown['d'] || keysDown['arrowright']) drone.vx += accel;
+      drone.vx *= friction;
+      drone.vy *= friction;
+      drone.x += drone.vx;
+      drone.y += drone.vy;
+
+      // Idle drift when no keys pressed
+      var anyKey = keysDown['w'] || keysDown['s'] || keysDown['a'] || keysDown['d'] ||
+                   keysDown['arrowup'] || keysDown['arrowdown'] || keysDown['arrowleft'] || keysDown['arrowright'];
+      if (!anyKey && Math.abs(drone.vx) < 0.1 && Math.abs(drone.vy) < 0.1) {
+        drone.y += Math.sin(FD.globalTick * 0.025) * 0.3;
+      }
+
+      // Clamp to canvas bounds
+      drone.x = Math.max(30, Math.min(W - 30, drone.x));
+      drone.y = Math.max(30, Math.min(H - GROUND_H - 15, drone.y));
+
+      // Tilt toward movement direction
+      drone.angle = drone.vx * -0.04 + Math.sin(FD.globalTick * 0.018) * 0.02;
+    } else {
+      // Idle bob — default when WASD is off
+      drone.x = W / 2;
+      drone.y = H / 2 - 40 + Math.sin(FD.globalTick * 0.025) * 14;
+      drone.angle = Math.sin(FD.globalTick * 0.018) * 0.04;
+      drone.vx = 0;
+      drone.vy = 0;
+    }
 
     flashAlpha *= 0.92;
     if (FD.screenShake > 0.3) FD.screenShake *= 0.85;
@@ -499,26 +698,57 @@
     FD.drawMoon();
     FD.drawStars();
     FD.drawClouds();
-    FD.drawNukeCloud();
+    FD.drawAurora();
 
     // Far city with tester-specific scroll
-    const scrollX = motionEnabled ? (FD.globalTick * 0.12) % FD.FAR_TILE_W : 0;
-    FD.drawFarCity(scrollX);
+    const scrollX = motionEnabled ? (FD.globalTick * 0.12 * parSpeedFront) : 0;
 
-    // Ground with tester-specific scroll
-    const scrollOffset = motionEnabled ? (FD.globalTick * 1.6) % 24 : 0;
-    FD.drawGround(scrollOffset);
+    // Mountain silhouettes behind city
+    if (layerVisible.mountains) FD.drawMountains(scrollX * (parSpeedMtn / parSpeedFront || 1));
+    FD.drawNukeCloud();
+
+    // City layers with uniform scale transform (anchored at ground)
+    if (parScale !== 1.0) {
+      ctx.save();
+      var scaleOriginY = H - FD.GROUND_H;
+      ctx.translate(W / 2, scaleOriginY);
+      ctx.scale(parScale, parScale);
+      ctx.translate(-W / 2, -scaleOriginY);
+    }
+    if (layerVisible.backCity) FD.drawFarCity(scrollX, 'back');
+    if (layerVisible.frontCity) FD.drawFarCity(scrollX, 'front');
+    if (parScale !== 1.0) ctx.restore();
+
+    // Ground
+    if (layerVisible.ground) {
+      const scrollOffset = motionEnabled ? (FD.globalTick * 1.6 * parSpeedGround) % 24 : 0;
+      FD.drawGround(scrollOffset);
+    }
 
     // Test buildings
     testBuildings.forEach(b => FD.drawBuilding(b));
 
-    // Test pipes (pipe generation preview)
+    // Test pipes (pipe generation preview) — include building features at high scores
     testPipes.forEach(function (p) {
       var seed = ((p.id * 2654435761) >>> 0);
-      FD.drawBuilding({
+      var hash = ((p.id * 13 + 7) * 37) % 100;
+      var bldg = {
         x: p.x, w: p.w, topY: p.y, height: p.h,
         fromTop: p.fromTop, seed: seed
-      });
+      };
+      // Add building features matching game.js logic
+      if (p.h > 50) {
+        if (hash % 10 < 3) bldg.ledges = true;
+        if (!p.fromTop && hash % 20 < 3) bldg.antenna = true;
+        if (!p.fromTop && hash < 30) {
+          var signHue = (p.id * 137 + 43) % 360;
+          bldg.signText = SIGN_TEXTS[p.id % SIGN_TEXTS.length];
+          bldg.signColor = 'hsl(' + signHue + ',100%,65%)';
+          var sTypeRoll = hash % 10;
+          bldg.signType = sTypeRoll < 5 ? 'roof' : sTypeRoll < 8 ? 'side' : 'stacked';
+        }
+      }
+      FD.drawBuilding(bldg);
     });
 
     FD.drawPickups();
@@ -566,18 +796,30 @@
   FD.canvas = canvas;
   render();
 
-  // --- Expose trigger functions on window for button onclick ---
+  // --- Expose all trigger functions on window ---
   window.selectDrone = selectDrone;
+  window.toggleWASD = toggleWASD;
   window.triggerDeath = triggerDeath;
   window.triggerFlash = triggerFlash;
   window.triggerYouDied = triggerYouDied;
+  window.triggerVictory = triggerVictory;
   window.triggerExplosion = triggerExplosion;
   window.triggerThrust = triggerThrust;
   window.triggerFirework = triggerFirework;
   window.triggerCountdown = triggerCountdown;
+  window.triggerCountdownSegment = triggerCountdownSegment;
+  window.setCountdownStyle = setCountdownStyle;
   window.triggerNuke = triggerNuke;
   window.spawnSignBuilding = spawnSignBuilding;
+  window.spawnSign = spawnSign;
+  window.spawnTestBuilding = spawnTestBuilding;
+  window.clearTestBuildings = clearTestBuildings;
+  window.clearTestSigns = clearTestSigns;
   window.spawnPickup = spawnPickup;
+  window.setAuroraIntensity = setAuroraIntensity;
+  window.setParallaxSpeed = setParallaxSpeed;
+  window.toggleLayer = toggleLayer;
+  window.setParallaxScale = setParallaxScale;
   window.toggleMotion = toggleMotion;
   window.resetScene = resetScene;
   window.triggerMilestone = triggerMilestone;

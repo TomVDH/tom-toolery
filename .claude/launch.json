@@ -3,9 +3,9 @@
   "configurations": [
     {
       "name": "flappy-drone",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8123", "--directory", "flappy-drone"],
-      "port": 8123
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "/Users/tomlinson/Documents/Tomtoolery/flappy-drone", "-l", "3847", "--no-clipboard"],
+      "port": 3847
     }
   ]
 }

@@ -7,109 +7,255 @@
 <link rel="stylesheet" href="css/game.css">
 <link rel="stylesheet" href="css/tester.css">
 </head>
-<body style="flex-direction:row;height:100vh;overflow:hidden">
+<body>
 <div id="panel">
   <div class="title-bar">
     <h1>TESTER</h1>
     <span class="badge">DEV</span>
   </div>
 
-  <h2>Drones</h2>
-  <div class="btn-grid">
-    <button class="btn-fx" onclick="selectDrone('quad')" id="drone-quad">Pixel Quad</button>
-    <button class="btn-fx" onclick="selectDrone('stealth')" id="drone-stealth">Stealth</button>
-    <button class="btn-fx" onclick="selectDrone('heavy')" id="drone-heavy">Heavy Lift</button>
-    <button class="btn-fx" onclick="selectDrone('racer')" id="drone-racer">Racer</button>
-    <button class="btn-fx" onclick="selectDrone('osprey')" id="drone-osprey">Osprey</button>
-    <button class="btn-fx" onclick="selectDrone('dragonfly')" id="drone-dragonfly">Dragonfly</button>
-    <button class="btn-fx" onclick="selectDrone('disc')" id="drone-disc">Disc UFO</button>
-    <button class="btn-fx" onclick="selectDrone('spider')" id="drone-spider">Spider Hex</button>
-    <button class="btn-fx" onclick="selectDrone('jetwing')" id="drone-jetwing">Jetwing</button>
-    <button class="btn-fx" onclick="selectDrone('balloon')" id="drone-balloon">Balloon</button>
-    <button class="btn-fx" onclick="selectDrone('paperplane')" id="drone-paperplane">Paper Plane</button>
-    <button class="btn-fx" onclick="selectDrone('chopper')" id="drone-chopper">Chopper</button>
-    <button class="btn-fx" onclick="selectDrone('gyro')" id="drone-gyro">Whirlybird</button>
-    <button class="btn-fx" onclick="selectDrone('blimp')" id="drone-blimp">Zephyr</button>
-    <button class="btn-fx" onclick="selectDrone('tandem')" id="drone-tandem">Warhorse</button>
-  </div>
+  <!-- 1. DRONE -->
+  <details open>
+    <summary>Drone</summary>
+    <div class="section-body">
+      <select id="droneSelect" onchange="selectDrone(this.value)">
+        <option value="quad">Pixel Quad</option>
+        <option value="stealth">Stealth</option>
+        <option value="heavy">Heavy Lift</option>
+        <option value="racer">Racer</option>
+        <option value="osprey">Osprey</option>
+        <option value="dragonfly">Dragonfly</option>
+        <option value="disc">Disc UFO</option>
+        <option value="spider">Spider Hex</option>
+        <option value="jetwing">Jetwing</option>
+        <option value="balloon">Balloon</option>
+        <option value="paperplane">Paper Plane</option>
+        <option value="chopper">Chopper</option>
+        <option value="gyro">Whirlybird</option>
+        <option value="blimp">Zephyr</option>
+        <option value="tandem">Warhorse</option>
+      </select>
+      <label class="toggle-row">
+        <input type="checkbox" id="wasdToggle" onchange="toggleWASD(this.checked)">
+        <span class="toggle-switch"></span>
+        <span class="toggle-label">WASD / Arrow Control</span>
+      </label>
+      <div class="hint" id="wasdHint">Drone idles automatically</div>
+    </div>
+  </details>
 
-  <h2>Effects</h2>
-  <div class="btn-grid">
-    <button class="btn-fx" onclick="triggerFirework()">Firework</button>
-    <button class="btn-fx" onclick="triggerExplosion()">Explosion</button>
-    <button class="btn-fx" onclick="triggerThrust()">Thrust Burst</button>
-    <button class="btn-fx" onclick="triggerCountdown()">Countdown</button>
-  </div>
+  <!-- 2. EFFECTS -->
+  <details open>
+    <summary>Effects</summary>
+    <div class="section-body">
+      <div class="btn-grid">
+        <button class="btn-fx" onclick="triggerFirework()">Firework</button>
+        <button class="btn-fx" onclick="triggerExplosion()">Explosion</button>
+        <button class="btn-fx" onclick="triggerThrust()">Thrust</button>
+      </div>
+      <div class="sub-label">Countdown</div>
+      <select id="countdownStyle" onchange="setCountdownStyle(this.value)">
+        <option value="random">Random Style</option>
+        <option value="0">Slam</option>
+        <option value="1">Typewriter</option>
+        <option value="2">Shockwave</option>
+        <option value="3">Radar Sweep</option>
+        <option value="4">Particle Assemble</option>
+      </select>
+      <button class="btn-fx" onclick="triggerCountdown()" style="width:100%">Play Full Countdown</button>
+      <div class="btn-row">
+        <button class="btn-fx btn-sm" onclick="triggerCountdownSegment('ready')">Ready?</button>
+        <button class="btn-fx btn-sm" onclick="triggerCountdownSegment('set')">Set.</button>
+        <button class="btn-fx btn-sm" onclick="triggerCountdownSegment('drone')">DRONE!</button>
+      </div>
+    </div>
+  </details>
 
-  <h2>Neon Signs</h2>
-  <div class="btn-grid-3">
-    <button class="btn-sign" onclick="spawnSignBuilding('ZENATECH', '#00d4ff')">ZENATECH</button>
-    <button class="btn-sign" onclick="spawnSignBuilding('IQ NANO', '#ff4488')">IQ NANO</button>
-    <button class="btn-sign" onclick="spawnSignBuilding('ZD1000', '#44ffaa')">ZD1000</button>
-    <button class="btn-sign" onclick="spawnSignBuilding('SKYNET', '#ff2244')">SKYNET</button>
-    <button class="btn-sign" onclick="spawnSignBuilding('APEX', '#ff8800')">APEX</button>
-    <button class="btn-sign" onclick="spawnSignBuilding('VOLT', '#00ffcc')">VOLT</button>
-  </div>
+  <!-- 3. NEON SIGNS -->
+  <details>
+    <summary>Neon Signs</summary>
+    <div class="section-body">
+      <select id="signSelect">
+        <option value="ZENATECH">ZENATECH</option>
+        <option value="IQ NANO">IQ NANO</option>
+        <option value="ZD1000">ZD1000</option>
+        <option value="SKYNET">SKYNET</option>
+        <option value="APEX">APEX</option>
+        <option value="VOLT">VOLT</option>
+        <option value="NIMBUS">NIMBUS</option>
+        <option value="HOVER">HOVER</option>
+        <option value="DRONE CO">DRONE CO</option>
+      </select>
+      <div class="btn-row">
+        <select id="signType">
+          <option value="random">Random Style</option>
+          <option value="roof">Roof Sign</option>
+          <option value="side">Side Sign</option>
+          <option value="stacked">Stacked Sign</option>
+        </select>
+      </div>
+      <div class="btn-row">
+        <button class="btn-fx" onclick="spawnSign()">Spawn</button>
+        <button class="btn-fx btn-clear" onclick="clearTestSigns()">Clear Signs</button>
+      </div>
+    </div>
+  </details>
 
-  <h2>Special</h2>
-  <button class="btn-nuke" onclick="triggerNuke()">☢ NUKE</button>
-  <div class="btn-row">
-    <button class="btn-fx" onclick="spawnPickup('nuke')" style="border-color:#ffcc00;">Nuke Pickup</button>
-    <button class="btn-fx" onclick="spawnPickup('shield')" style="border-color:#00bbff;">Shield Pickup</button>
-  </div>
+  <!-- 4. BUILDINGS -->
+  <details>
+    <summary>Buildings</summary>
+    <div class="section-body">
+      <select id="buildingStyle">
+        <option value="random">Random</option>
+        <option value="narrow">Narrow</option>
+        <option value="wide">Wide</option>
+        <option value="ledges">With Ledges</option>
+        <option value="antenna">With Antenna</option>
+        <option value="sign">With Sign</option>
+        <option value="full">Full Random (All)</option>
+      </select>
+      <div class="btn-row">
+        <button class="btn-fx" onclick="spawnTestBuilding()">Spawn</button>
+        <button class="btn-fx btn-clear" onclick="clearTestBuildings()">Clear</button>
+      </div>
+    </div>
+  </details>
 
-  <h2>Death</h2>
-  <div class="btn-row">
-    <button class="btn-death" onclick="triggerDeath()">Full Sequence</button>
-    <button class="btn-death" onclick="triggerFlash()">Flash</button>
-    <button class="btn-death" onclick="triggerYouDied()">YOU DIED</button>
-  </div>
+  <!-- 5. SPECIAL -->
+  <details open>
+    <summary>Special</summary>
+    <div class="section-body">
+      <button class="btn-nuke" onclick="triggerNuke()">&#9762; NUKE</button>
+      <div class="sub-label">Aurora</div>
+      <div class="slider-row">
+        <label>Intensity: <span id="auroraLabel">12</span>%</label>
+        <input type="range" id="auroraSlider" min="0" max="100" value="12" oninput="setAuroraIntensity(this.value)">
+      </div>
+      <div class="sub-label">Pickups</div>
+      <div class="btn-row">
+        <button class="btn-fx" onclick="spawnPickup('nuke')">Nuke</button>
+        <button class="btn-fx" onclick="spawnPickup('shield')">Shield</button>
+        <button class="btn-fx" onclick="spawnPickup('magnet')">Magnet</button>
+      </div>
+    </div>
+  </details>
 
-  <h2>Pipe Generation</h2>
-  <div class="btn-row" style="margin-bottom:6px">
-    <button class="btn-mode" id="pipeMode-classic" onclick="setPipeMode('classic')">Classic</button>
-    <button class="btn-mode" id="pipeMode-rush" onclick="setPipeMode('rush')">Rush</button>
-  </div>
-  <div class="slider-row">
-    <label>Score: <span id="pipeScoreLabel">0</span></label>
-    <input type="range" id="pipeScore" min="0" max="50" value="0" oninput="onPipeScoreChange(this.value)">
-  </div>
-  <div class="btn-row">
-    <button class="btn-fx" onclick="generatePipePreview()">Generate</button>
-    <button class="btn-fx" id="scrollBtn" onclick="togglePipeScroll()">Scroll: OFF</button>
-    <button class="btn-fx" onclick="clearPipePreview()">Clear</button>
-  </div>
-  <div class="btn-row" style="margin-top:4px">
-    <button class="btn-fx" id="hitboxBtn" onclick="toggleHitboxes()">Hitboxes: OFF</button>
-  </div>
+  <!-- 6. GAME STATE -->
+  <details>
+    <summary>Game State</summary>
+    <div class="section-body">
+      <div class="sub-label">Death</div>
+      <div class="btn-row">
+        <button class="btn-death" onclick="triggerDeath()">Full</button>
+        <button class="btn-death" onclick="triggerFlash()">Flash</button>
+        <button class="btn-death" onclick="triggerYouDied()">YOU DIED</button>
+      </div>
+      <div class="sub-label">Victory</div>
+      <button class="btn-fx btn-victory" onclick="triggerVictory()">ZENAVLLE IS SAVED</button>
+      <span class="coming-soon">Coming Soon: Full Victory Sequence</span>
+    </div>
+  </details>
 
-  <h2>Score Milestones</h2>
-  <div class="btn-grid">
-    <button class="btn-fx" onclick="triggerMilestone('NICE!','#00d4ff')">NICE! (10)</button>
-    <button class="btn-fx" onclick="triggerMilestone('INSANE!','#ffcc00')">INSANE! (25)</button>
-    <button class="btn-fx" onclick="triggerMilestone('LEGENDARY!','#ff4466')">LEGENDARY! (50)</button>
-    <button class="btn-fx" onclick="triggerMilestone('GODLIKE','#cc44ff')">GODLIKE (100)</button>
-  </div>
+  <!-- 7. PIPE AMPLITUDE -->
+  <details>
+    <summary>Pipe Amplitude</summary>
+    <div class="section-body">
+      <div class="btn-row" style="margin-bottom:6px">
+        <button class="btn-mode" id="pipeMode-classic" onclick="setPipeMode('classic')">Classic</button>
+        <button class="btn-mode" id="pipeMode-rush" onclick="setPipeMode('rush')">Rush</button>
+      </div>
+      <div class="slider-row">
+        <label>Score: <span id="pipeScoreLabel">0</span></label>
+        <input type="range" id="pipeScore" min="0" max="50" value="0" oninput="onPipeScoreChange(this.value)">
+      </div>
+      <div class="btn-row">
+        <button class="btn-fx" onclick="generatePipePreview()">Generate</button>
+        <button class="btn-fx" id="scrollBtn" onclick="togglePipeScroll()">Scroll: OFF</button>
+        <button class="btn-fx" onclick="clearPipePreview()">Clear</button>
+      </div>
+      <button class="btn-fx" id="hitboxBtn" onclick="toggleHitboxes()" style="margin-top:4px;width:100%">Hitboxes: OFF</button>
+    </div>
+  </details>
 
-  <h2>Near Miss</h2>
-  <div class="slider-row">
-    <label>Gap: <span id="nearMissLabel">15</span>px</label>
-    <input type="range" id="nearMissGap" min="5" max="40" value="15" oninput="document.getElementById('nearMissLabel').textContent=this.value">
-  </div>
-  <button class="btn-fx" onclick="triggerNearMiss()">Near Miss</button>
+  <!-- 8. PARALLAX -->
+  <details>
+    <summary>Parallax</summary>
+    <div class="section-body">
+      <div class="sub-label">Layer Visibility</div>
+      <div class="btn-grid">
+        <label class="toggle-row"><input type="checkbox" checked onchange="toggleLayer('mountains', this.checked)"><span class="toggle-switch"></span><span class="toggle-label">Mountains</span></label>
+        <label class="toggle-row"><input type="checkbox" checked onchange="toggleLayer('backCity', this.checked)"><span class="toggle-switch"></span><span class="toggle-label">Back City</span></label>
+        <label class="toggle-row"><input type="checkbox" checked onchange="toggleLayer('frontCity', this.checked)"><span class="toggle-switch"></span><span class="toggle-label">Front City</span></label>
+        <label class="toggle-row"><input type="checkbox" checked onchange="toggleLayer('ground', this.checked)"><span class="toggle-switch"></span><span class="toggle-label">Ground</span></label>
+      </div>
+      <div class="sub-label">Layer Speed</div>
+      <div class="slider-row">
+        <label>Mtn: <span id="parMtnLabel">0.2</span>x</label>
+        <input type="range" id="parMtn" min="0" max="200" value="20" oninput="setParallaxSpeed('mountains', this.value)">
+      </div>
+      <div class="slider-row">
+        <label>Back: <span id="parBackLabel">0.6</span>x</label>
+        <input type="range" id="parBack" min="0" max="200" value="60" oninput="setParallaxSpeed('back', this.value)">
+      </div>
+      <div class="slider-row">
+        <label>Front: <span id="parFrontLabel">1.0</span>x</label>
+        <input type="range" id="parFront" min="0" max="200" value="100" oninput="setParallaxSpeed('front', this.value)">
+      </div>
+      <div class="slider-row">
+        <label>Ground: <span id="parGroundLabel">1.0</span>x</label>
+        <input type="range" id="parGround" min="0" max="200" value="100" oninput="setParallaxSpeed('ground', this.value)">
+      </div>
+      <div class="sub-label">Scale</div>
+      <div class="slider-row">
+        <label>City: <span id="parScaleLabel">1.0</span>x</label>
+        <input type="range" id="parScale" min="50" max="200" value="100" oninput="setParallaxScale(this.value)">
+      </div>
+      <div class="btn-row">
+        <button class="btn-fx" id="motionBtn" onclick="toggleMotion()">Motion: ON</button>
+        <button class="btn-fx" onclick="resetScene()">Reset</button>
+      </div>
+    </div>
+  </details>
 
-  <h2>Speed Indicator</h2>
-  <div class="slider-row">
-    <label>Speed: <span id="speedFxLabel">2.8</span></label>
-    <input type="range" id="speedFxSlider" min="10" max="150" value="28" oninput="onSpeedFxChange(this.value)">
-  </div>
-  <button class="btn-fx" id="speedFxBtn" onclick="toggleSpeedFx()">Speed FX: OFF</button>
+  <!-- 9. TIME OF DAY -->
+  <details>
+    <summary>Time of Day <span class="coming-soon-inline">Soon</span></summary>
+    <div class="section-body disabled-section">
+      <select disabled>
+        <option>Night (Current)</option>
+        <option>Dawn</option>
+        <option>Day</option>
+        <option>Dusk</option>
+      </select>
+      <div class="hint">Time of day rendering not yet implemented</div>
+    </div>
+  </details>
 
-  <h2>Scene</h2>
-  <div class="btn-row">
-    <button class="btn-fx" id="motionBtn" onclick="toggleMotion()">Motion: ON</button>
-    <button class="btn-fx" onclick="resetScene()">Reset</button>
-  </div>
+  <!-- 10. MISCELLANEOUS -->
+  <details>
+    <summary>Miscellaneous</summary>
+    <div class="section-body">
+      <div class="sub-label">Score Milestones</div>
+      <div class="btn-grid">
+        <button class="btn-fx" onclick="triggerMilestone('NICE!','#00d4ff')">NICE!</button>
+        <button class="btn-fx" onclick="triggerMilestone('INSANE!','#ffcc00')">INSANE!</button>
+        <button class="btn-fx" onclick="triggerMilestone('LEGENDARY!','#ff4466')">LEGENDARY!</button>
+        <button class="btn-fx" onclick="triggerMilestone('GODLIKE','#cc44ff')">GODLIKE</button>
+      </div>
+      <div class="sub-label">Near Miss</div>
+      <div class="slider-row">
+        <label>Gap: <span id="nearMissLabel">15</span>px</label>
+        <input type="range" id="nearMissGap" min="5" max="40" value="15" oninput="document.getElementById('nearMissLabel').textContent=this.value">
+      </div>
+      <button class="btn-fx" onclick="triggerNearMiss()" style="width:100%">Trigger Near Miss</button>
+      <div class="sub-label">Speed Indicator</div>
+      <div class="slider-row">
+        <label>Speed: <span id="speedFxLabel">2.8</span></label>
+        <input type="range" id="speedFxSlider" min="10" max="150" value="28" oninput="onSpeedFxChange(this.value)">
+      </div>
+      <button class="btn-fx" id="speedFxBtn" onclick="toggleSpeedFx()" style="width:100%">Speed FX: OFF</button>
+    </div>
+  </details>
 </div>
 
 <canvas id="game" width="620" height="640"></canvas>

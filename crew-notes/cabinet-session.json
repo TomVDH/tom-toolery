@@ -1,0 +1,73 @@
+{
+  "version": "1.9.0",
+  "plugin_version": "1.9.0",
+  "session_id": "2026-03-26T23:17:00Z",
+  "project_name": "Flappy Drone",
+  "codename": null,
+  "status": "wrapped",
+  "crew_notes_path": "/Users/tomlinson/Documents/Tomtoolery/crew-notes",
+
+  "active_specialist": null,
+  "active_task": null,
+  "collaboration": null,
+
+  "gates": {
+    "completed": [],
+    "current": null,
+    "total_planned": null
+  },
+
+  "scope": {
+    "locked": false,
+    "in": [],
+    "out": [],
+    "drift_count": 0
+  },
+
+  "parking_lot": ["Preview 22 — revisit Cabinet Cut approach with more time"],
+
+  "energy": {
+    "last_check": null,
+    "temperature": "good",
+    "momentum": "cruising",
+    "session_start": "2026-03-26T23:17:00Z",
+    "break_count": 0,
+    "last_break": "2026-03-26T23:17:00Z"
+  },
+
+  "dissent": [],
+
+  "memories": {
+    "questions_asked": 0,
+    "last_asker": null,
+    "gate_counter_since_last_question": 0
+  },
+
+  "chatter": {
+    "nudge_used": false,
+    "message_count_approx": 48,
+    "level": "quiet"
+  },
+
+  "git": {
+    "branch": "master",
+    "last_commit": "3febd5a",
+    "version_tag": null
+  },
+
+  "vault": {
+    "mode": "cli",
+    "layout": "dedicated",
+    "base_path": "/Users/tomlinson/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude Cabinet",
+    "vault_name": "Claude Cabinet",
+    "version": "2.0",
+    "connected_at": "2026-03-26T23:17:00Z",
+    "brief_loaded": false,
+    "preferences_loaded": true,
+    "lessons_loaded": false,
+    "decisions_written": [],
+    "preferences_captured": [],
+    "lessons_logged": [],
+    "last_write_at": "2026-03-27T00:15:00Z"
+  }
+}

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blast Off — Powerwash Drone</title>
+<link rel="stylesheet" href="css/game.css">
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  window.trackEvent = function(name, params) {
+    if (typeof gtag === 'function') gtag('event', name, params || {});
+    if (window.__BO_WEBHOOK) {
+      try {
+        var payload = Object.assign({ event: name, ts: new Date().toISOString() }, params || {});
+        navigator.sendBeacon(window.__BO_WEBHOOK, JSON.stringify(payload));
+      } catch(e) {}
+    }
+  };
+</script>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="620" height="640"></canvas>
+  <div class="version">blast-off v0.1</div>
+  <div class="hud" id="hud">0</div>
+  <div class="hud-combo" id="hudCombo" style="display:none">x2</div>
+
+  <div class="screen show" id="menuScreen">
+    <div class="title" id="gameTitle">BLAST OFF</div>
+    <div class="slogan" id="gameSlogan">aim. spray. survive.</div>
+    <script>
+      (function(){
+        var slogans = [
+          'aim. spray. survive.',
+          'recoil is your only friend',
+          'every spray has consequences',
+          'the city is filthy. fix it.',
+          'pressure washing at altitude',
+          'grime waits for no drone',
+          'squeaky clean or splattered',
+          'newton says you move',
+          'spray and pray',
+          'jetstream navigation',
+          'the rinse cycle',
+          'under pressure',
+          'powerwash from above',
+          'clean sweep protocol'
+        ];
+        document.getElementById('gameSlogan').textContent = slogans[Math.floor(Math.random() * slogans.length)];
+      })();
+    </script>
+    <div class="menu-section">
+      <div class="menu-section-label">DRONE</div>
+      <div class="drone-picker">
+        <span class="drone-arrow" id="droneLeft">&#9664;</span>
+        <span class="drone-label" id="droneLabel">PIXEL QUAD</span>
+        <span class="drone-arrow" id="droneRight">&#9654;</span>
+      </div>
+    </div>
+
+    <div class="prompt">Click & aim to spray</div>
+  </div>
+
+  <div class="screen score-screen" id="scoreScreen">
+    <div class="score-label">Grime Cleaned</div>
+    <div class="score-value" id="scoreValue">0</div>
+    <div class="score-stats" id="scoreStats"></div>
+    <div class="score-best" id="scoreBest">Best: 0</div>
+    <div class="score-prompt">Tap to retry</div>
+  </div>
+</div>
+<div class="copyright">ZenaSoft (c) 1984 -- All Rights Reserved.</div>
+
+<script src="js/config.js"></script>
+<script src="js/background.js"></script>
+<script src="js/buildings.js"></script>
+<script src="js/drones.js"></script>
+<script src="js/effects.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>

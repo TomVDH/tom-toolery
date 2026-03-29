@@ -80,6 +80,8 @@
     drone = { x: 100, y: H / 2, vy: 0, angle: 0, propPhase: 0 };
     pipes = [];
     score = 0;
+    FD.auroraTargetIntensity = 0;
+    FD.auroraIntensity = 0;
     frame = 0;
     groundScroll = 0;
     farCityScroll = 0;
@@ -606,6 +608,18 @@
         topH = newGapCenter - curGap / 2;
       }
 
+      // ── Max divergence clamp ──────────────────────────────
+      // When pipes are close together, limit how far the gap can shift
+      // so a wide building doesn't block the adjacent gap entirely.
+      // Max vertical shift = curGap * 0.7 (ensures overlap for passage)
+      var maxShift = curGap * 0.7;
+      var shift = newGapCenter - lastGapCenterY;
+      if (Math.abs(shift) > maxShift) {
+        newGapCenter = lastGapCenterY + (shift > 0 ? maxShift : -maxShift);
+        newGapCenter = Math.max(minTop + curGap / 2, Math.min(maxTop + curGap / 2, newGapCenter));
+        topH = newGapCenter - curGap / 2;
+      }
+
       // ── Dynamic spacing (Classic only) ──────────────────────
       // Big vertical jumps get extra horizontal room so the drone
       // can physically reach the next gap. Small jumps stay tight.
@@ -648,6 +662,9 @@
         pipes[i].scored = true;
         score++;
         hudEl.textContent = score;
+
+        // Aurora intensifies with score
+        FD.auroraTargetIntensity = Math.min(1, score / 50);
 
         // Rush: bonus time every N gates
         if (activeMode === 'rush' && score > 0 && score % RUSH_BONUS_EVERY === 0) {
@@ -744,13 +761,17 @@
     FD.drawMoon();
     FD.drawStars();
     FD.drawClouds();
-    FD.drawNukeCloud();
+    FD.drawAurora();
 
-    // Far city parallax — tracks actual game speed
+    // Far city parallax — split layers so fireworks render between them
     var scrollX = (state === 'play' || state === 'dying' || state === 'dead')
-      ? farCityScroll % FD.FAR_TILE_W
-      : (FD.globalTick * 0.12) % FD.FAR_TILE_W;
-    FD.drawFarCity(scrollX);
+      ? farCityScroll
+      : (FD.globalTick * 0.12);
+
+    // Mountain silhouettes behind city
+    FD.drawMountains(scrollX);
+    FD.drawNukeCloud();
+    FD.drawFarCity(scrollX, 'back');
 
     // Ground — tracks actual game speed
     var scrollOffset = (state === 'play' || state === 'dying' || state === 'dead')
@@ -799,8 +820,9 @@
       }
     }
 
-    // Fireworks render behind game buildings for depth
+    // Fireworks render between parallax back and front rows for depth
     FD.drawFireworks();
+    FD.drawFarCity(scrollX, 'front');
 
     // ── Pipes rendered as buildings ──────────────────────────
     pipes.forEach(function (p) {

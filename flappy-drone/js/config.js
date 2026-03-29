@@ -28,8 +28,8 @@ FD.SCORE_DELAY     = 20;       // pause before score screen
 // --- Ready countdown ---
 FD.READY_MS = 4000; // 4 seconds, refresh-rate independent
 
-// --- Far-city tile width ---
-FD.FAR_TILE_W = 320;
+// --- Far-city tile width (must exceed viewport width so Z-Tower appears once) ---
+FD.FAR_TILE_W = 640;
 
 // --- Pixel bitmap font (5x5 per character) ---
 FD.PX = {
@@ -109,23 +109,56 @@ FD.bgStars = Array.from({ length: 55 }, () => ({
   phase: Math.random() * Math.PI * 2
 }));
 
+// --- Pseudo-random hash for window lighting (shared) ---
+FD.windowHash = function (seed, c, row) {
+  var h = seed * 2654435761 + c * 340573321 + Math.floor(row) * 196314165;
+  h = ((h >>> 16) ^ h) * 0x45d9f3b;
+  h = ((h >>> 16) ^ h);
+  return (h & 0xFF) / 255;
+};
+
 // --- Far-city buildings (upgraded 2-layer format) ---
 FD.farBuildings = [
-  // Back layer -- tall towers
-  ...Array.from({ length: 8 }, (_, i) => ({
-    x: i * 40 + 5,
-    h: 70 + Math.sin(i * 2.1 + 0.5) * 40 + Math.cos(i * 3.7) * 20,
-    w: 16 + ((i * 5 + 2) % 4) * 3,
-    layer: 'back'
+  // Back layer -- dense skyline across 640px tile, one Z-tower
+  ...Array.from({ length: 22 }, (_, i) => ({
+    x: i * 28 + 3,
+    h: i === 8 ? 155 : (45 + Math.sin(i * 2.1 + 0.5) * 35 + Math.cos(i * 3.7) * 22),
+    w: 13 + ((i * 5 + 2) % 4) * 3,
+    layer: 'back',
+    zTower: i === 8
   })),
-  // Front layer -- shorter, denser
-  ...Array.from({ length: 14 }, (_, i) => ({
-    x: i * 23 + ((i * 3) % 7),
-    h: 20 + Math.sin(i * 2.9 + 1.1) * 15 + Math.cos(i * 4.3) * 10,
-    w: 16 + ((i * 7 + 1) % 6) * 2,
+  // Front layer -- shorter, denser (spread across 640px tile)
+  ...Array.from({ length: 28 }, (_, i) => ({
+    x: i * 22 + ((i * 3) % 5),
+    h: 22 + Math.sin(i * 2.9 + 1.1) * 16 + Math.cos(i * 4.3) * 12,
+    w: 14 + ((i * 7 + 1) % 6) * 2,
     layer: 'front'
   }))
 ];
+
+// Pre-compute windows on far buildings
+FD.farBuildings.forEach(function (b, idx) {
+  b.wins = [];
+  // Staggered light-on time per building (0-180 ticks = ~0-3 seconds)
+  b.lightOnTick = Math.floor(FD.windowHash(idx * 31, 99, 77) * 180);
+  var isBack = b.layer === 'back';
+  var winW = isBack ? 2 : 3;
+  var winH = isBack ? 3 : 4;
+  var spX = isBack ? 5 : 6;
+  var spY = isBack ? 7 : 9;
+  var seed = idx * 7919;
+  for (var wy = 4; wy < b.h - 5; wy += spY) {
+    for (var wx = 2; wx < b.w - winW; wx += spX) {
+      b.wins.push({
+        dx: wx, dy: wy,
+        on: FD.windowHash(seed, wx, wy) > 0.42,
+        die: 200 + FD.windowHash(seed + 1, wx, wy + 9) * 600,
+        relight: 8500 + FD.windowHash(seed + 2, wx, wy + 17) * 2000, // staggered re-light 8.5-10.5s
+        w: winW, h: winH
+      });
+    }
+  }
+});
 
 // --- Shared mutable state ---
 FD.globalTick   = 0;
@@ -141,6 +174,33 @@ FD.nukeGy       = FD.H - FD.GROUND_H;
 FD.pickups      = [];
 FD.deathText    = 'YOU DIED';
 
+// --- Mountain range silhouettes (behind back parallax row) ---
+// Gentle rolling slopes, wide peaks, very subtle
+FD.mountains = [
+  { // Far range — jagged ridgeline with peaks and valleys
+    color: '#070711', speedMult: 0.15, baseY: 0.73,
+    points: Array.from({ length: 80 }, (_, i) => {
+      var x = i / 79;
+      return Math.sin(x * 2.4 + 0.8) * 0.022
+           + Math.sin(x * 5.5 + 1.5) * 0.016
+           + Math.sin(x * 11.0 + 3.0) * 0.009
+           + Math.sin(x * 17.0 + 0.3) * 0.005
+           + Math.cos(x * 8.3 + 2.7) * 0.012;
+    })
+  },
+  { // Mid range — different rhythm, overlapping peaks
+    color: '#080813', speedMult: 0.25, baseY: 0.755,
+    points: Array.from({ length: 80 }, (_, i) => {
+      var x = i / 79;
+      return Math.sin(x * 3.1 + 2.3) * 0.018
+           + Math.sin(x * 6.8 + 0.5) * 0.013
+           + Math.sin(x * 13.5 + 4.1) * 0.008
+           + Math.sin(x * 20.0 + 1.9) * 0.004
+           + Math.cos(x * 9.7 + 3.4) * 0.01;
+    })
+  }
+];
+
 // --- Clouds (subtle night wisps) ---
 FD.clouds = Array.from({ length: 5 }, (_, i) => ({
   x: Math.random() * 620,
@@ -149,3 +209,13 @@ FD.clouds = Array.from({ length: 5 }, (_, i) => ({
   speed: 0.008 + Math.random() * 0.015,
   opacity: 0.015 + Math.random() * 0.02
 }));
+
+// --- Aurora curtains (ambient sky effect) ---
+FD.auroraCurtains = [
+  { baseY: 40,  amplitude: 20, freq: 1.8, speed: 0.9, hue: 140, phase: 0.0, thickness: 22 },
+  { baseY: 82,  amplitude: 30, freq: 2.1, speed: 1.2, hue: 160, phase: 1.5, thickness: 28 },
+  { baseY: 124, amplitude: 18, freq: 2.5, speed: 1.0, hue: 280, phase: 3.1, thickness: 20 },
+  { baseY: 166, amplitude: 25, freq: 1.7, speed: 1.4, hue: 120, phase: 4.7, thickness: 25 }
+];
+FD.auroraIntensity = 0;
+FD.auroraTargetIntensity = 0;

@@ -155,4 +155,109 @@
     });
     ctx.globalAlpha = 1;
   };
+
+  // --- Mountain range silhouettes (behind city, very slow parallax) ---
+  FD.drawMountains = function (scrollX) {
+    var ctx = FD.ctx, W = FD.W, H = FD.H;
+    var mounts = FD.mountains;
+    if (!mounts) return;
+
+    // Nuke edge glow on mountain ridgeline
+    var nukeRim = 0;
+    if (FD.nukeActive) {
+      var ne = performance.now() - FD.nukeStart;
+      if (ne < 500) nukeRim = ne / 500;
+      else if (ne < 4000) nukeRim = 1;
+      else if (ne < 7000) nukeRim = 1 - (ne - 4000) / 3000;
+    }
+
+    ctx.globalAlpha = 0.25;
+    mounts.forEach(function (m) {
+      var offset = (scrollX || 0) * m.speedMult;
+      var baseY = H * m.baseY;
+      var pts = m.points;
+      var tileW = W * 1.5;
+
+      // Build ridgeline path
+      var ridgePts = [];
+      for (var px = -50; px <= W + 50; px += 4) {
+        var rawX = (px + offset) / tileW;
+        rawX = ((rawX % 1) + 1) % 1;
+        var idx = rawX * (pts.length - 1);
+        var i0 = Math.floor(idx);
+        var frac = idx - i0;
+        var i1 = (i0 + 1) % pts.length;
+        var h = pts[i0] * (1 - frac) + pts[i1] * frac;
+        ridgePts.push({ x: px, y: baseY + h * H });
+      }
+
+      // Fill body — barely warmed during nuke
+      if (nukeRim > 0.01) {
+        var r = 8 + nukeRim * 6, g = 8 + nukeRim * 3, b2 = 14 + nukeRim * 1;
+        ctx.fillStyle = 'rgb(' + (r | 0) + ',' + (g | 0) + ',' + (b2 | 0) + ')';
+      } else {
+        ctx.fillStyle = m.color;
+      }
+      ctx.beginPath();
+      ctx.moveTo(ridgePts[0].x, ridgePts[0].y);
+      for (var j = 1; j < ridgePts.length; j++) ctx.lineTo(ridgePts[j].x, ridgePts[j].y);
+      ctx.lineTo(W + 50, H);
+      ctx.lineTo(-50, H);
+      ctx.closePath();
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+  };
+
+  // --- Aurora borealis curtains (ambient sky effect) ---
+  FD.drawAurora = function () {
+    var ctx = FD.ctx, W = FD.W, H = FD.H;
+    var curtains = FD.auroraCurtains;
+    if (!curtains) return;
+    var now = performance.now();
+
+    // Smooth intensity lerp toward target
+    FD.auroraIntensity += (FD.auroraTargetIntensity - FD.auroraIntensity) * 0.02;
+
+    // Base ambient + score-driven event boost (nuke does NOT auto-invoke)
+    var baseAlpha = 0.12;
+    var eventAlpha = FD.auroraIntensity * 0.30;
+    var totalAlpha = baseAlpha + eventAlpha;
+
+    if (totalAlpha < 0.01) return;
+
+    var STRIPS = 30;
+    var stripW = W / STRIPS + 1;
+
+    curtains.forEach(function (cur) {
+      for (var i = 0; i < STRIPS; i++) {
+        var x = (i / STRIPS) * W;
+        var xn = x / W;
+
+        // Double-wave shape
+        var wave = Math.sin(xn * cur.freq * Math.PI * 2 + now * 0.001 * cur.speed + cur.phase) * cur.amplitude;
+        var wave2 = Math.sin(xn * cur.freq * 1.7 * Math.PI * 2 + now * 0.0007 * cur.speed + cur.phase + 2) * cur.amplitude * 0.4;
+        var y = cur.baseY + wave + wave2;
+        var h = cur.thickness * (0.6 + 0.4 * Math.sin(xn * 8 + now * 0.002 + cur.phase));
+
+        // Brightness modulation along curtain
+        var bright = 0.5 + 0.5 * Math.sin(xn * 12 + now * 0.003 * cur.speed + cur.phase * 2);
+
+        // Hue shift
+        var hueShift = Math.sin(xn * 4 + now * 0.001) * 20;
+        var a = totalAlpha * bright * 0.35;
+
+        // Vertical gradient strip (transparent -> peak -> transparent)
+        var sg = ctx.createLinearGradient(x, y - h, x, y + h * 2.5);
+        sg.addColorStop(0, 'hsla(' + (cur.hue + hueShift) + ',70%,65%,0)');
+        sg.addColorStop(0.2, 'hsla(' + (cur.hue + hueShift) + ',75%,55%,' + (a * 0.3) + ')');
+        sg.addColorStop(0.4, 'hsla(' + (cur.hue + hueShift) + ',80%,45%,' + a + ')');
+        sg.addColorStop(0.6, 'hsla(' + (cur.hue + hueShift + 20) + ',70%,35%,' + (a * 0.7) + ')');
+        sg.addColorStop(1, 'hsla(' + (cur.hue + hueShift) + ',60%,20%,0)');
+
+        ctx.fillStyle = sg;
+        ctx.fillRect(x, y - h, stripW, h * 3.5);
+      }
+    });
+  };
 })();

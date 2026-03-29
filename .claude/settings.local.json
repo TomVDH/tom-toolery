@@ -14,7 +14,13 @@
       "mcp__plugin_playwright_playwright__browser_take_screenshot",
       "Bash(gh api:*)",
       "Bash(gh run:*)",
-      "Bash(gh workflow:*)"
+      "Bash(gh workflow:*)",
+      "WebFetch(domain:tomvdh.github.io)",
+      "Bash(obsidian vault=\"Claude Cabinet\" files folder=\"projects\")",
+      "WebSearch",
+      "WebFetch(domain:flappybird.fandom.com)",
+      "WebFetch(domain:flappy-bird.com)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Nuke Showcase — Flappy Drone</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #060610;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100vh;
+    font-family: 'SF Mono', 'Menlo', 'Courier New', monospace;
+    color: #aaa;
+    padding: 20px 10px 24px;
+  }
+
+  .header { text-align: center; margin-bottom: 14px; }
+  h1 {
+    color: #fff;
+    font-size: 18px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .subtitle {
+    font-size: 10px;
+    color: #555;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  #canvas-wrap {
+    position: relative;
+    display: inline-block;
+    border: 1px solid #1c1c2e;
+    border-radius: 2px;
+    transition: box-shadow 0.15s ease;
+  }
+  #canvas-wrap.detonating {
+    box-shadow: 0 0 32px 6px rgba(255, 120, 30, 0.35), 0 0 8px 2px rgba(255, 80, 10, 0.5);
+  }
+  canvas {
+    display: block;
+    border-radius: 2px;
+  }
+
+  /* Variant selector */
+  .variant-row {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+  }
+  .variant-label {
+    font-size: 9px;
+    color: #444;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-right: 4px;
+  }
+  .variant-btn {
+    background: #0a0a1a;
+    border: 1px solid #2a2a40;
+    color: #666;
+    padding: 5px 14px;
+    font-size: 10px;
+    font-family: inherit;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.18s;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  .variant-btn:hover { background: #111128; color: #bbb; border-color: #444; }
+  .variant-btn.active {
+    background: #12121f;
+    border-color: #c84;
+    color: #f0a050;
+    box-shadow: 0 0 8px rgba(255, 150, 50, 0.15);
+  }
+
+  /* Control row */
+  .controls {
+    margin-top: 10px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .btn-detonate {
+    background: transparent;
+    border: 2px solid #c33;
+    color: #f55;
+    padding: 9px 32px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    border-radius: 3px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    transition: all 0.18s;
+    font-weight: bold;
+  }
+  .btn-detonate:hover {
+    background: rgba(200, 30, 30, 0.12);
+    border-color: #f44;
+    color: #f77;
+    box-shadow: 0 0 12px rgba(220, 40, 40, 0.25);
+  }
+  .btn-detonate:active { transform: scale(0.97); }
+
+  .btn-reset {
+    background: #0a0a1a;
+    border: 1px solid #2a2a40;
+    color: #555;
+    padding: 9px 20px;
+    font-size: 11px;
+    font-family: inherit;
+    cursor: pointer;
+    border-radius: 3px;
+    letter-spacing: 1px;
+    transition: all 0.18s;
+  }
+  .btn-reset:hover { background: #111128; color: #888; border-color: #383850; }
+
+  #timer {
+    font-size: 12px;
+    color: #555;
+    letter-spacing: 1px;
+    font-variant-numeric: tabular-nums;
+    min-width: 100px;
+    text-align: center;
+  }
+
+  .credits {
+    margin-top: 16px;
+    font-size: 9px;
+    color: #2a2a3a;
+    letter-spacing: 1.5px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Nuke Showcase</h1>
+  <div class="subtitle">Historical Variants &mdash; Flappy Drone</div>
+</div>
+
+<div id="canvas-wrap">
+  <canvas id="c" width="620" height="640"></canvas>
+</div>
+
+<div class="variant-row">
+  <span class="variant-label">Variant:</span>
+  <div id="variant-btns"></div>
+</div>
+
+<div class="controls">
+  <button class="btn-detonate" id="btn-detonate">DETONATE</button>
+  <button class="btn-reset" id="btn-reset">RESET</button>
+  <span id="timer">Ready</span>
+</div>
+
+
+<script>
+'use strict';
+
+// ================================================================
+// NUKE SHOWCASE — 31-nuke-showcase.html
+// Running historical catalogue of Flappy Drone nuke variants.
+//
+// Architecture:
+//   VARIANTS array  — data-driven, each entry has {id, name, drawFn}
+//   drawFn(ctx, elapsed, W, H, gx, gy) — receives scene context
+//   Selector buttons auto-generated from VARIANTS array
+//
+// Scene layers (shared across all variants):
+//   Sky gradient -> Stars -> Moon -> Mountains -> City -> NUKE ->
+//   EMP blackout -> Building rim-light -> Ground bar -> Overlays
+//
+// Henske    : nuke cloud, colour ramp, overlays, scene atmosphere
+// Thieuke   : architecture, easing, variant selector system
+// Jonasty   : timing curves, shockwave, interpolation quality
+// Sakke     : particle pools, no GC thrashing
+// Poekie    : city silhouette, EMP blackout, Z-Tower
+// Bostrol   : version tracking, marker discipline
+// Kevijntje : scope — 11s, 620x640, no frameworks
+// ================================================================
+
+const C = document.getElementById('c');
+const X = C.getContext('2d');
+const W = 620, H = 640;
+const DUR = 11000;
+const GX = W / 2, GY = Math.round(H * 0.78);
+
+const btnDetonate = document.getElementById('btn-detonate');
+const btnReset    = document.getElementById('btn-reset');
+const timerEl     = document.getElementById('timer');
+const canvasWrap  = document.getElementById('canvas-wrap');
+const variantBtns = document.getElementById('variant-btns');
+
+// ----------------------------------------------------------------
+// Utility
+// ----------------------------------------------------------------
+const clamp01 = t => Math.max(0, Math.min(1, t));
+const lerp    = (a, b, t) => a + (b - a) * clamp01(t);
+const ease3   = t => 1 - Math.pow(1 - clamp01(t), 3);
+const ss      = (lo, hi, x) => {
+  const t = clamp01((x - lo) / (hi - lo));
+  return t * t * (3 - 2 * t);
+};
+const hash = (x, y) => {
+  let s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+  return s - Math.floor(s);
+};
+
+// ----------------------------------------------------------------
+// Scene state
+// ----------------------------------------------------------------
+let nukeOn = false, nukeT0 = 0, activeVariant = 0;
+
+// ----------------------------------------------------------------
+// Stars
+// ----------------------------------------------------------------
+const STARS = Array.from({ length: 55 }, (_, i) => ({
+  x: hash(i, 0) * W,
+  y: hash(i, 1) * H * 0.48,
+  r: 0.4 + hash(i, 2) * 1.4,
+  ph: hash(i, 3) * 6.2832,
+  sp: 0.4 + hash(i, 4) * 2.2
+}));
+
+// ----------------------------------------------------------------
+// City  (two-depth parallax layers)
+// ----------------------------------------------------------------
+function mkBuildings(offset, countMul) {
+  const b = [];
+  for (let bx = 0; bx < W; bx += (10 + hash(bx + offset, 50) * 16) * (1 / countMul)) {
+    const bw = 11 + hash(bx + offset, 51) * 20;
+    const bh = 28 + hash(bx + offset, 52) * 100;
+    const wins = [];
+    for (let wy = 5; wy < bh - 7; wy += 10)
+      for (let wx = 3; wx < bw - 4; wx += 7)
+        wins.push({
+          dx: wx, dy: wy,
+          on: hash(bx + wx + offset, wy) > 0.33,
+          dieAt:  200 + hash(bx + wx + offset, wy + 9) * 600,   // EMP kill time
+          relitAt: 8500 + hash(bx + wx + offset, wy + 7) * 2000  // relight time
+        });
+    b.push({ x: bx, w: bw, h: bh, wins });
+  }
+  return b;
+}
+
+// Layer 1 — foreground (taller, darker)
+const CITY_FG = mkBuildings(0, 1);
+// Layer 2 — background (shorter, slightly transparent)
+const CITY_BG = mkBuildings(777, 0.7);
+
+// Z-Tower position
+const ZTOWER_X = Math.round(W * 0.72);
+const ZTOWER_H = 180;
+const ZTOWER_W = 22;
+
+// ----------------------------------------------------------------
+// Mountains (2 rows)
+// ----------------------------------------------------------------
+function mkMountains(seed_, count, minH, maxH, spread) {
+  return Array.from({ length: count }, (_, i) => {
+    const x = (i / (count - 1)) * (W + spread * 2) - spread;
+    const h = minH + hash(seed_ + i, 3) * maxH;
+    const w = 70 + hash(seed_ + i, 4) * 90;
+    return { x, h, w };
+  });
+}
+const MTNS_BACK  = mkMountains(10, 9, 45, 80, 40);
+const MTNS_FRONT = mkMountains(20, 7, 30, 55, 20);
+
+// ----------------------------------------------------------------
+// Particle pools  (Sakke: no GC thrashing)
+// ----------------------------------------------------------------
+const MAX_SHRAPNEL = 40, MAX_EMBERS = 100, MAX_ASH = 50, MAX_DUST = 60, MAX_SPARKS = 30;
+const mkPool = n => Array.from({ length: n }, () => ({ alive: false }));
+let shrapnel, embers, ash, dust, sparks;
+function resetPools() {
+  shrapnel = mkPool(MAX_SHRAPNEL);
+  embers   = mkPool(MAX_EMBERS);
+  ash      = mkPool(MAX_ASH);
+  dust     = mkPool(MAX_DUST);
+  sparks   = mkPool(MAX_SPARKS);
+}
+resetPools();
+
+function spawnParticle(pool, props) {
+  for (const p of pool) {
+    if (!p.alive) { Object.assign(p, props, { alive: true }); return p; }
+  }
+}
+
+// ----------------------------------------------------------------
+// Screen shake
+// ----------------------------------------------------------------
+let shakeX = 0, shakeY = 0;
+
+// ----------------------------------------------------------------
+// ==  VARIANTS  ==================================================
+// ----------------------------------------------------------------
+// Each variant is { id, name, drawFn }.
+// drawFn(ctx, elapsed, W, H, gx, gy) — draw the nuke cloud only.
+// Scene (sky, city, overlays) is handled by the shared renderer.
+//
+// === ADD NEW VARIANTS HERE ===
+//
+// Example:
+//   VARIANTS.push({
+//     id:   'fury',
+//     name: 'FURY MK-II',
+//     drawFn: function(ctx, elapsed, W, H, gx, gy) { ... }
+//   });
+//
+// Then refresh — the selector button appears automatically.
+// ----------------------------------------------------------------
+
+const VARIANTS = [];
+
+// ----------------------------------------------------------------
+// VARIANT 0: CLASSIC OG
+// Faithful reproduction of FD.drawNukeCloud() from effects.js.
+// Reference: /flappy-drone/js/effects.js  (FD.drawNukeCloud)
+// ----------------------------------------------------------------
+VARIANTS.push({
+  id:   'classic-og',
+  name: 'CLASSIC OG',
+  drawFn: function drawClassicOG(ctx, elapsed, W, H, gx, gy) {
+    // --- Shockwave ring (200-2000ms) ---
+    if (elapsed > 200 && elapsed < 2000) {
+      const st = (elapsed - 200) / 1800;
+      const radius = st * Math.max(W, H) * 0.8;
+      ctx.globalAlpha = (1 - st) * 0.3;
+      ctx.strokeStyle = 'rgba(255, 200, 100, 0.6)';
+      ctx.lineWidth = 3 + (1 - st) * 8;
+      ctx.beginPath(); ctx.arc(gx, gy, radius, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    // --- Mushroom cloud (100ms onward) ---
+    if (elapsed <= 100) return;
+
+    const cloudT   = Math.min(1, (elapsed - 100) / 3000);
+    const fadeT    = elapsed > 9000 ? Math.min(1, (elapsed - 9000) / 2000) : 0;
+    const darkT    = elapsed > 3000 ? Math.min(1, (elapsed - 3000) / 3500) : 0;
+    const alpha    = (1 - fadeT) * 0.85;
+
+    if (alpha < 0.01) return;
+
+    ctx.globalAlpha = alpha;
+
+    const riseEase    = 1 - Math.pow(1 - Math.min(1, cloudT * 1.5), 3);
+    const slowDrift   = Math.min(1, elapsed / DUR) * H * 0.07;
+    const cloudCenterY = gy - riseEase * (H * 0.45) - slowDrift;
+    const capGrow     = Math.min(1, cloudT * 2);
+    const capR        = 40 + capGrow * 55;
+    const capRx       = capR * 1.4;
+    const stemTopW    = 18 + capGrow * 12;
+    const stemBaseW   = 30 + capGrow * 25;
+
+    // Colour darkening over time
+    const hShift = darkT * 15;
+    const lDrop  = darkT * 30;
+
+    // --- Intense base glow ---
+    const baseGlowR   = capRx * 1.8;
+    const baseGlowAlpha = alpha * Math.max(0, 1 - darkT * 0.7);
+    const baseGlow = ctx.createRadialGradient(gx, gy, 0, gx, gy, baseGlowR);
+    baseGlow.addColorStop(0,    `hsla(35, 100%, 70%, ${baseGlowAlpha * 0.7})`);
+    baseGlow.addColorStop(0.15, `hsla(28, 100%, 50%, ${baseGlowAlpha * 0.35})`);
+    baseGlow.addColorStop(0.4,  `hsla(20, 100%, 30%, ${baseGlowAlpha * 0.08})`);
+    baseGlow.addColorStop(1,    'hsla(15, 100%, 20%, 0)');
+    ctx.fillStyle = baseGlow;
+    ctx.beginPath(); ctx.arc(gx, gy, baseGlowR, 0, Math.PI * 2); ctx.fill();
+
+    // --- Stem (quadratic curves, gradient) ---
+    const stemGrad = ctx.createLinearGradient(gx, cloudCenterY + capR * 0.3, gx, gy);
+    stemGrad.addColorStop(0, `hsla(${25 - hShift}, 90%, ${Math.max(10, 45 - lDrop)}%, ${alpha})`);
+    stemGrad.addColorStop(0.4, `hsla(${20 - hShift}, 85%, ${Math.max(8, 35 - lDrop)}%, ${alpha})`);
+    stemGrad.addColorStop(1, `hsla(${15 - hShift}, 70%, ${Math.max(5, 25 - lDrop)}%, ${alpha})`);
+    ctx.fillStyle = stemGrad;
+    ctx.beginPath();
+    ctx.moveTo(gx - stemTopW / 2, cloudCenterY + capR * 0.3);
+    ctx.quadraticCurveTo(
+      gx - stemTopW * 0.6, (cloudCenterY + gy) / 2,
+      gx - stemBaseW / 2,  gy
+    );
+    ctx.lineTo(gx + stemBaseW / 2, gy);
+    ctx.quadraticCurveTo(
+      gx + stemTopW * 0.6, (cloudCenterY + gy) / 2,
+      gx + stemTopW / 2,   cloudCenterY + capR * 0.3
+    );
+    ctx.closePath(); ctx.fill();
+
+    // --- Cap glow (soft radial) ---
+    const glowRadius = capRx * 2.5;
+    const glowGrad = ctx.createRadialGradient(gx, cloudCenterY, capR * 0.2, gx, cloudCenterY, glowRadius);
+    glowGrad.addColorStop(0, `hsla(30, 100%, ${Math.max(15, 60 - lDrop * 2)}%, ${alpha * 0.35})`);
+    glowGrad.addColorStop(0.4, `hsla(25, 100%, ${Math.max(10, 45 - lDrop * 2)}%, ${alpha * 0.15})`);
+    glowGrad.addColorStop(1, 'hsla(15, 100%, 30%, 0)');
+    ctx.fillStyle = glowGrad;
+    ctx.beginPath(); ctx.arc(gx, cloudCenterY, glowRadius, 0, Math.PI * 2); ctx.fill();
+
+    // --- Cap layers (3 concentric ellipses, darkening over time) ---
+    ctx.fillStyle = `hsla(${12 - hShift}, 60%, ${Math.max(5, 22 - lDrop)}%, ${alpha})`;
+    ctx.beginPath(); ctx.ellipse(gx, cloudCenterY, capRx * 1.1, capR * 0.95, 0, 0, Math.PI * 2); ctx.fill();
+
+    ctx.fillStyle = `hsla(${18 - hShift}, 80%, ${Math.max(8, 32 - lDrop)}%, ${alpha})`;
+    ctx.beginPath(); ctx.ellipse(gx, cloudCenterY - capR * 0.05, capRx * 0.9, capR * 0.8, 0, 0, Math.PI * 2); ctx.fill();
+
+    ctx.fillStyle = `hsla(${25 - hShift}, 90%, ${Math.max(10, 42 - lDrop)}%, ${alpha})`;
+    ctx.beginPath(); ctx.ellipse(gx, cloudCenterY - capR * 0.08, capRx * 0.65, capR * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+
+    // --- Hot core (delayed darkening at 5.5s) ---
+    const coreDarkDelay = elapsed > 5500 ? Math.min(1, (elapsed - 5500) / 2500) : 0;
+    const coreAlpha     = alpha * Math.max(0.1, 1 - coreDarkDelay);
+    ctx.fillStyle = `hsla(40, 100%, ${Math.max(20, 70 - lDrop * 2)}%, ${coreAlpha})`;
+    ctx.beginPath(); ctx.ellipse(gx, cloudCenterY - capR * 0.1, capRx * 0.35, capR * 0.35, 0, 0, Math.PI * 2); ctx.fill();
+
+    // --- White-hot center (first 40% of cloud rise) ---
+    if (cloudT < 0.4) {
+      const wa = (1 - cloudT / 0.4) * alpha;
+      ctx.fillStyle = `rgba(255, 255, 220, ${wa})`;
+      ctx.beginPath(); ctx.ellipse(gx, cloudCenterY, capRx * 0.2, capR * 0.2, 0, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // --- Base ring / skirt ---
+    ctx.fillStyle = `hsla(${15 - hShift}, 70%, ${Math.max(5, 28 - lDrop)}%, ${alpha * 0.7})`;
+    ctx.beginPath(); ctx.ellipse(gx, cloudCenterY + capR * 0.5, capRx * 1.15, capR * 0.25, 0, 0, Math.PI * 2); ctx.fill();
+
+    // --- 3 concentric cloud bands with sag/pulse ---
+    {
+      const now = elapsed / 1000;
+      for (let i = 0; i < 3; i++) {
+        const entryT = 0.15 + i * 0.15;
+        if (cloudT < entryT) continue;
+        const bandAge  = Math.min(1, (cloudT - entryT) / 0.35);
+        const t01      = i / 2;
+        const finalY   = cloudCenterY - capR * (0.55 - t01 * 1.0) - 35;
+        const startY   = cloudCenterY + capR * 0.5;
+        const bandY    = startY + (finalY - startY) * bandAge
+                         + Math.sin(now * (0.4 + i * 0.25) + i * 2.3) * capR * 0.03;
+        const widthAtY = capRx * (0.6 + t01 * 0.8) * bandAge;
+        const fade     = (0.7 + t01 * 0.3) * bandAge;
+        const pulse    = 0.3 + 0.1 * Math.sin(now * (1.2 + i * 0.4) + i * 1.7);
+        const bandAlpha = alpha * pulse * fade;
+        const bandL    = Math.max(10, (44 - i * 4) - lDrop);
+        const bandH    = 24 - hShift + i * 3;
+        const sag1     = capR * 0.05 * Math.sin(now * (0.6 + i * 0.3) + i);
+        const sag2     = capR * 0.04 * Math.sin(now * (0.5 + i * 0.2) + i + 1.5);
+        ctx.strokeStyle = `hsla(${bandH}, 75%, ${bandL}%, ${bandAlpha})`;
+        ctx.lineWidth   = (4 + t01 * 2) * bandAge;
+        ctx.lineCap     = 'round';
+        ctx.beginPath();
+        ctx.moveTo(gx - widthAtY, bandY);
+        ctx.quadraticCurveTo(gx - widthAtY * 0.35, bandY + sag1, gx, bandY + sag2);
+        ctx.quadraticCurveTo(gx + widthAtY * 0.35, bandY - sag1, gx + widthAtY, bandY);
+        ctx.stroke();
+      }
+    }
+
+    ctx.globalAlpha = 1;
+  }
+});
+
+// ----------------------------------------------------------------
+// (Future variants go here — see comment above)
+// ----------------------------------------------------------------
+
+
+// ================================================================
+// Variant selector UI — auto-generated from VARIANTS array
+// ================================================================
+(function buildVariantUI() {
+  variantBtns.innerHTML = '';
+  variantBtns.style.display = 'flex';
+  variantBtns.style.gap = '8px';
+  variantBtns.style.flexWrap = 'wrap';
+  VARIANTS.forEach((v, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'variant-btn' + (i === activeVariant ? ' active' : '');
+    btn.textContent = v.name;
+    btn.dataset.idx = i;
+    btn.onclick = () => {
+      if (nukeOn) return; // don't switch mid-detonation
+      activeVariant = i;
+      document.querySelectorAll('.variant-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    };
+    variantBtns.appendChild(btn);
+  });
+})();
+
+// ================================================================
+// Controls
+// ================================================================
+btnDetonate.onclick = () => {
+  nukeOn = true;
+  nukeT0 = performance.now();
+  resetPools();
+  // Shrapnel burst
+  for (let i = 0; i < 35; i++) {
+    const a  = hash(i, 70) * Math.PI * 2;
+    const sp = 3 + hash(i, 71) * 7;
+    spawnParticle(shrapnel, {
+      x: GX, y: GY,
+      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 2,
+      life: 25 + hash(i, 72) * 20, mx: 45
+    });
+  }
+  // Ground dust wave
+  for (let i = 0; i < MAX_DUST; i++) {
+    const dir   = i < MAX_DUST / 2 ? -1 : 1;
+    const delay = hash(i, 80) * 40;
+    spawnParticle(dust, {
+      x: GX + (hash(i, 81) - 0.5) * 60, y: GY + hash(i, 82) * 8,
+      vx: dir * (2 + hash(i, 83) * 4), vy: -0.3 - hash(i, 84) * 0.8,
+      life: -delay, mx: 180 + hash(i, 85) * 120,
+      r: 3 + hash(i, 86) * 8
+    });
+  }
+};
+
+btnReset.onclick = () => {
+  nukeOn = false;
+  timerEl.textContent = 'Ready';
+  canvasWrap.classList.remove('detonating');
+  resetPools();
+};
+
+// ================================================================
+// Draw helpers
+// ================================================================
+
+function drawSky(ms) {
+  let r = 6, g = 6, b = 16;
+  if (nukeOn) {
+    const flash    = ms < 300 ? 1 : 0;
+    const fire     = ss(300, 1500, ms) * ss(6000, 2000, ms);
+    const twilight = ss(4000, 8000, ms) * ss(11000, 8000, ms);
+    r = lerp(6,  255, flash) + fire * 55 + twilight * 4;
+    g = lerp(6,  245, flash) + fire * 22;
+    b = lerp(16, 200, flash) + fire * 8  + twilight * 12;
+  }
+  const skyGrad = X.createLinearGradient(0, 0, 0, H * 0.8);
+  const rc = n => Math.round(Math.min(255, Math.max(0, n)));
+  const top = `rgb(${rc(r * 0.4)},${rc(g * 0.4)},${rc(b * 0.6)})`;
+  const bot = `rgb(${rc(r)},${rc(g)},${rc(b)})`;
+  skyGrad.addColorStop(0, top);
+  skyGrad.addColorStop(1, bot);
+  X.fillStyle = skyGrad;
+  X.fillRect(0, 0, W, H);
+}
+
+function drawMoon(ms) {
+  const mx = W * 0.82, my = H * 0.1;
+  // Glow
+  const moonGlowAlpha = nukeOn ? Math.max(0, 1 - ss(0, 500, ms)) * 0.18 : 0.18;
+  if (moonGlowAlpha > 0.005) {
+    const mg = X.createRadialGradient(mx, my, 0, mx, my, 40);
+    mg.addColorStop(0,   `rgba(220, 220, 180, ${moonGlowAlpha})`);
+    mg.addColorStop(0.4, `rgba(180, 180, 140, ${moonGlowAlpha * 0.4})`);
+    mg.addColorStop(1,   'rgba(120, 120, 100, 0)');
+    X.fillStyle = mg;
+    X.beginPath(); X.arc(mx, my, 40, 0, Math.PI * 2); X.fill();
+  }
+  // Moon disc
+  X.globalAlpha = nukeOn ? Math.max(0, 1 - ss(0, 600, ms)) : 1;
+  X.fillStyle = '#ccc8a8';
+  X.beginPath(); X.arc(mx, my, 11, 0, Math.PI * 2); X.fill();
+  // Crescent bite
+  X.fillStyle = '#060610';
+  X.beginPath(); X.arc(mx + 5, my - 2, 9, 0, Math.PI * 2); X.fill();
+  X.globalAlpha = 1;
+}
+
+function drawStars(ms, now) {
+  const starA = nukeOn
+    ? Math.max(0, 1 - ss(0, 200, ms) * 4) * ss(7000, 10000, ms)
+    : 1;
+  if (starA < 0.01) return;
+  STARS.forEach(s => {
+    const tw = 0.5 + 0.5 * Math.sin(now * 0.001 * s.sp + s.ph);
+    X.globalAlpha = starA * tw * 0.75;
+    X.fillStyle = '#dde';
+    X.beginPath(); X.arc(s.x, s.y, s.r, 0, Math.PI * 2); X.fill();
+  });
+  X.globalAlpha = 1;
+}
+
+function drawMountains(ms) {
+  const mtnAlpha = 0.25 * (nukeOn ? Math.max(0.05, 1 - ss(0, 600, ms) * 0.6) : 1);
+  // Back range
+  X.globalAlpha = mtnAlpha * 0.55;
+  X.fillStyle = '#1a1a2e';
+  MTNS_BACK.forEach(m => {
+    X.beginPath();
+    X.moveTo(m.x - m.w, GY);
+    X.quadraticCurveTo(m.x, GY - m.h, m.x + m.w, GY);
+    X.fill();
+  });
+  // Front range
+  X.globalAlpha = mtnAlpha;
+  X.fillStyle = '#141420';
+  MTNS_FRONT.forEach(m => {
+    X.beginPath();
+    X.moveTo(m.x - m.w * 0.8, GY);
+    X.quadraticCurveTo(m.x, GY - m.h, m.x + m.w * 0.8, GY);
+    X.fill();
+  });
+  X.globalAlpha = 1;
+}
+
+function drawCity(ms) {
+  // Background layer (parallax — slightly smaller, higher)
+  const bgOff = nukeOn ? -ss(0, 3000, ms) * 2 : 0; // subtle parallax nudge
+  X.globalAlpha = 0.55;
+  CITY_BG.forEach(b => {
+    const by = GY - b.h * 0.72 + bgOff;
+    X.fillStyle = '#0c0c1a';
+    X.fillRect(b.x, by, b.w * 0.85, b.h * 0.72);
+  });
+  X.globalAlpha = 1;
+
+  // Foreground layer
+  CITY_FG.forEach(b => {
+    const by = GY - b.h;
+    X.fillStyle = '#0d0d1c';
+    X.fillRect(b.x, by, b.w, b.h);
+    // Windows with EMP blackout and relight
+    b.wins.forEach(w => {
+      let on = w.on;
+      if (nukeOn && ms > w.dieAt && ms < w.relitAt) {
+        on = false;
+        // Brief flicker at moment of EMP death
+        if (ms < w.dieAt + 80 && Math.random() > 0.5) on = true;
+      }
+      X.fillStyle = on ? 'rgba(255, 200, 60, 0.45)' : 'rgba(255, 200, 60, 0.025)';
+      X.fillRect(b.x + w.dx, by + w.dy, 4, 5);
+    });
+  });
+}
+
+function drawZTower(ms) {
+  const tx   = ZTOWER_X;
+  const ty   = GY - ZTOWER_H;
+  const tw   = ZTOWER_W;
+  const base = GY;
+
+  // Tower body (tapered trapezoid)
+  X.fillStyle = '#0f0f20';
+  X.beginPath();
+  X.moveTo(tx - tw / 2 - 3, base);
+  X.lineTo(tx - tw / 2 + 2, ty + 30);
+  X.lineTo(tx - tw / 2 + 5, ty);
+  X.lineTo(tx + tw / 2 - 5, ty);
+  X.lineTo(tx + tw / 2 - 2, ty + 30);
+  X.lineTo(tx + tw / 2 + 3, base);
+  X.closePath(); X.fill();
+
+  // Purple windows
+  const empA = nukeOn ? (ms > 300 && ms < 9200 ? 0 : 1) : 1;
+  if (empA > 0) {
+    X.fillStyle = `rgba(140, 60, 220, ${empA * 0.55})`;
+    for (let wy = ty + 18; wy < base - 20; wy += 16) {
+      X.fillRect(tx - 3, wy, 6, 8);
+    }
+  }
+
+  // White "Z" logo on top section
+  const zA = nukeOn ? (ms > 300 && ms < 9200 ? 0 : 1) : 1;
+  if (zA > 0) {
+    X.globalAlpha = zA * 0.9;
+    X.fillStyle = '#fff';
+    X.font = 'bold 11px monospace';
+    X.textAlign = 'center';
+    X.textBaseline = 'middle';
+    X.fillText('Z', tx, ty + 15);
+    X.globalAlpha = 1;
+  }
+
+  // Red antenna blinking
+  const antBlink = Math.floor(performance.now() / 800) % 2 === 0;
+  const antOn = nukeOn ? (ms > 300 && ms < 9200 ? false : antBlink) : antBlink;
+  X.strokeStyle = antOn ? 'rgba(255, 40, 40, 0.9)' : 'rgba(80, 10, 10, 0.4)';
+  X.lineWidth = 1.5;
+  X.beginPath();
+  X.moveTo(tx, ty);
+  X.lineTo(tx, ty - 18);
+  X.stroke();
+  if (antOn) {
+    X.fillStyle = 'rgba(255, 60, 60, 0.85)';
+    X.beginPath(); X.arc(tx, ty - 18, 2.5, 0, Math.PI * 2); X.fill();
+  }
+}
+
+function drawBuildingRimLight(ms) {
+  if (!nukeOn || ms > 7000) return;
+  const rimA = ss(0, 500, ms) * ss(7000, 5000, ms) * 0.5;
+  if (rimA < 0.01) return;
+  X.strokeStyle = `rgba(255, 155, 40, ${rimA})`;
+  X.lineWidth = 1;
+  CITY_FG.forEach(b => {
+    X.beginPath();
+    X.moveTo(b.x, GY - b.h);
+    X.lineTo(b.x + b.w, GY - b.h);
+    X.stroke();
+  });
+}
+
+function drawGround() {
+  X.fillStyle = '#080814';
+  X.fillRect(0, GY, W, H - GY);
+  // Ground edge line
+  X.strokeStyle = '#111122';
+  X.lineWidth = 1;
+  X.beginPath(); X.moveTo(0, GY); X.lineTo(W, GY); X.stroke();
+}
+
+function drawOverlays(ms) {
+  // --- White flash (0-300ms) ---
+  if (nukeOn && ms < 300) {
+    const ft = ms / 300;
+    X.globalAlpha = (1 - ft * ft) * 0.95;
+    X.fillStyle = '#fff';
+    X.fillRect(0, 0, W, H);
+    X.globalAlpha = 1;
+  }
+
+  // --- Warm radial glow overlay (0-7s) ---
+  if (nukeOn && ms < 7000) {
+    const cloudT = Math.min(1, Math.max(0, ms - 100) / 3000);
+    const riseEase   = 1 - Math.pow(1 - Math.min(1, cloudT * 1.5), 3);
+    const slowDrift  = Math.min(1, ms / DUR) * H * 0.07;
+    const cY         = GY - riseEase * (H * 0.45) - slowDrift;
+    const intensity  = (1 - (ms / 7000) ** 2) * 0.45;
+    const rad        = Math.max(W, H) * 1.2;
+    const rg = X.createRadialGradient(GX, cY, 0, GX, cY, rad);
+    rg.addColorStop(0,   `hsla(35, 100%, 65%, ${intensity})`);
+    rg.addColorStop(0.3, `hsla(25, 100%, 45%, ${intensity * 0.5})`);
+    rg.addColorStop(0.7, `hsla(20, 90%, 25%, ${intensity * 0.15})`);
+    rg.addColorStop(1,   'hsla(15, 80%, 15%, 0)');
+    X.fillStyle = rg;
+    X.fillRect(0, 0, W, H);
+  }
+}
+
+function drawParticles() {
+  // Shrapnel
+  shrapnel.forEach(p => {
+    if (!p.alive) return;
+    p.x += p.vx; p.y += p.vy; p.vy += 0.05; p.life--;
+    if (p.life <= 0) { p.alive = false; return; }
+    const a = p.life / p.mx;
+    X.globalAlpha = a;
+    X.strokeStyle = `rgba(255, 180, 60, ${a})`;
+    X.lineWidth = 1.5;
+    X.beginPath(); X.moveTo(p.x, p.y); X.lineTo(p.x - p.vx * 2, p.y - p.vy * 2); X.stroke();
+  });
+
+  // Embers
+  embers.forEach(p => {
+    if (!p.alive) return;
+    p.x += p.vx + Math.sin(p.life * 0.02 + p.x * 0.01) * 0.15;
+    p.y += p.vy; p.life--;
+    if (p.life <= 0) { p.alive = false; return; }
+    const a = p.life / p.mx * 0.8;
+    X.globalAlpha = a;
+    X.fillStyle = `hsl(${p.hue}, 100%, ${50 + a * 25}%)`;
+    X.shadowColor = `hsl(${p.hue}, 100%, 50%)`; X.shadowBlur = 5;
+    X.beginPath(); X.arc(p.x, p.y, p.r * (0.5 + p.life / p.mx * 0.5), 0, Math.PI * 2); X.fill();
+    X.shadowBlur = 0;
+  });
+
+  // Sparks
+  sparks.forEach(p => {
+    if (!p.alive) return;
+    p.x += p.vx; p.y += p.vy; p.vy += 0.01; p.vx *= 0.99; p.life--;
+    if (p.life <= 0) { p.alive = false; return; }
+    const a = p.life / p.mx;
+    X.globalAlpha = a;
+    X.fillStyle = `rgba(255, ${200 + Math.round(a * 55)}, ${100 + Math.round(a * 100)}, ${a})`;
+    X.shadowColor = 'rgba(255, 200, 80, 0.8)'; X.shadowBlur = 4;
+    X.beginPath(); X.arc(p.x, p.y, p.r * a, 0, Math.PI * 2); X.fill();
+    X.shadowBlur = 0;
+  });
+
+  // Ash
+  ash.forEach(p => {
+    if (!p.alive) return;
+    p.x += p.vx + Math.sin(p.life * 0.02) * 0.3; p.y += p.vy; p.life--;
+    if (p.life <= 0) { p.alive = false; return; }
+    X.globalAlpha = clamp01(p.life / p.mx) * 0.32;
+    X.fillStyle = '#888';
+    X.beginPath(); X.arc(p.x, p.y, p.r, 0, Math.PI * 2); X.fill();
+  });
+
+  // Dust wave
+  dust.forEach(p => {
+    if (!p.alive) return;
+    p.life++;
+    if (p.life < 0) return;
+    if (p.life > p.mx) { p.alive = false; return; }
+    p.x += p.vx; p.y += p.vy;
+    p.vx *= 0.985; p.vy *= 0.98;
+    const a      = (1 - p.life / p.mx) * 0.42;
+    const expand = 1 + p.life / p.mx * 2;
+    X.globalAlpha = a;
+    X.fillStyle = `hsla(25, 30%, 25%, ${a})`;
+    X.beginPath(); X.arc(p.x, p.y, p.r * expand, 0, Math.PI * 2); X.fill();
+  });
+
+  X.globalAlpha = 1;
+}
+
+function spawnRunningParticles(ms) {
+  if (!nukeOn) return;
+
+  // Embers
+  if (ms > 600 && ms < 6000) {
+    const ct2   = clamp01((ms - 80) / 3000);
+    const re2   = 1 - Math.pow(1 - Math.min(1, ct2 * 1.5), 3);
+    const dr2   = Math.min(1, ms / DUR) * H * 0.07;
+    const cY2   = GY - re2 * (H * 0.45) - dr2;
+    const gr2   = Math.min(1, ct2 * 2);
+    const eR    = (40 + gr2 * 55) * 1.4 * 1.2;
+    const eY    = cY2 + (40 + gr2 * 55) * 0.5;
+    for (let i = 0; i < 2; i++) {
+      spawnParticle(embers, {
+        x: GX + (Math.random() - 0.5) * 2 * eR, y: eY + Math.random() * 8,
+        vx: (Math.random() - 0.5) * 0.8, vy: 0.3 + Math.random() * 0.6,
+        life: 120 + Math.random() * 180, mx: 300,
+        r: 1 + Math.random() * 2.5, hue: 15 + Math.random() * 30
+      });
+    }
+  }
+
+  // Sparks
+  if (ms > 200 && ms < 4000 && Math.random() < 0.3) {
+    spawnParticle(sparks, {
+      x: GX + (Math.random() - 0.5) * 80, y: GY - Math.random() * 40,
+      vx: (Math.random() - 0.5) * 2, vy: -2 - Math.random() * 4,
+      life: 40 + Math.random() * 60, mx: 100,
+      r: 0.5 + Math.random() * 1.5
+    });
+  }
+
+  // Ash
+  if (ms > 3000 && ms < 8500 && Math.random() < 0.12) {
+    spawnParticle(ash, {
+      x: Math.random() * W, y: -10,
+      vx: (Math.random() - 0.5) * 0.5, vy: 0.3 + Math.random() * 0.8,
+      life: 200 + Math.random() * 200, mx: 400,
+      r: 0.5 + Math.random() * 1.5
+    });
+  }
+}
+
+function drawVignette() {
+  const vg = X.createRadialGradient(W / 2, H / 2, H * 0.32, W / 2, H / 2, H * 0.78);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(0,0,0,0.42)');
+  X.fillStyle = vg; X.fillRect(0, 0, W, H);
+}
+
+// ================================================================
+// Main render loop
+// ================================================================
+function frame(now) {
+  requestAnimationFrame(frame);
+
+  const ms = nukeOn ? now - nukeT0 : -1;
+
+  // End of sequence
+  if (nukeOn && ms > DUR) {
+    nukeOn = false;
+    timerEl.textContent = 'Complete';
+    canvasWrap.classList.remove('detonating');
+  }
+  if (nukeOn) {
+    timerEl.textContent = (ms / 1000).toFixed(2) + 's / 11.0s';
+    if (ms > 100 && ms < 9500) {
+      canvasWrap.classList.add('detonating');
+    } else {
+      canvasWrap.classList.remove('detonating');
+    }
+  }
+
+  // --- Screen shake (Jonasty: decaying from 50px) ---
+  shakeX = 0; shakeY = 0;
+  if (nukeOn) {
+    // Cloud drawFn sets FD.screenShake; we replicate inline here
+    let amp = 0;
+    if (ms < 1200) amp += 50 * (1 - ms / 1200);
+    else if (ms < 4000) amp = Math.max(amp * 0.94, 0);
+    if (ms > 1400 && ms < 2200) amp += 8 * ss(2200, 1400, ms);
+    if (ms > 2500 && ms < 6000) amp += 2 * Math.abs(Math.sin(ms * 0.02)) * ss(6000, 2500, ms);
+    shakeX = (Math.random() - 0.5) * 2 * Math.min(14, amp);
+    shakeY = (Math.random() - 0.5) * 2 * Math.min(14, amp);
+  }
+
+  X.save();
+  X.translate(shakeX, shakeY);
+
+  // Layer 1: Sky
+  drawSky(ms);
+
+  // Layer 2: Stars, Moon
+  drawStars(ms, now);
+  drawMoon(ms);
+
+  // Layer 3: Mountains
+  drawMountains(ms);
+
+  // Layer 4: NUKE CLOUD (behind city)
+  if (nukeOn && ms > 0) {
+    VARIANTS[activeVariant].drawFn(X, ms, W, H, GX, GY);
+  }
+
+  // Layer 5: Ground + City
+  drawGround();
+  drawCity(ms);
+  drawZTower(ms);
+  drawBuildingRimLight(ms);
+
+  // Layer 6: Particles
+  spawnRunningParticles(ms);
+  drawParticles();
+
+  // Layer 7: Overlays (flash, warm glow)
+  drawOverlays(ms);
+
+  // Layer 8: Vignette
+  drawVignette();
+
+  X.restore();
+}
+
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

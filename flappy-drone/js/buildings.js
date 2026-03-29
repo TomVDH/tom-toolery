@@ -4,13 +4,8 @@
 (function () {
   const FD = window.FD;
 
-  // --- Pseudo-random hash for window lighting ---
-  function windowHash(seed, c, row) {
-    var h = seed * 2654435761 + c * 340573321 + Math.floor(row) * 196314165;
-    h = ((h >>> 16) ^ h) * 0x45d9f3b;
-    h = ((h >>> 16) ^ h);
-    return (h & 0xFF) / 255; // 0-1
-  }
+  // windowHash is now on FD namespace (config.js) — alias for local use
+  var windowHash = FD.windowHash;
 
   // --- Helper: compute nuke rim light parameters ---
   // holdEnd/fadeLen control when the rim fades out
@@ -40,70 +35,232 @@
   }
 
   // --- Far city: 2-layer parallax skyline ---
-  // scrollX: caller passes current scroll value (e.g. (globalTick * 0.12) % FAR_TILE_W)
-  FD.drawFarCity = function (scrollX) {
+  // scrollX: raw scroll value. layer: 'back', 'front', or undefined (both).
+  FD.drawFarCity = function (scrollX, layer) {
     var ctx = FD.ctx, W = FD.W, H = FD.H;
     var GROUND_H = FD.GROUND_H, FAR_TILE_W = FD.FAR_TILE_W;
     var farBuildings = FD.farBuildings;
 
-    var backBuildings = farBuildings.filter(function (b) { return b.layer === 'back'; });
-    var frontBuildings = farBuildings.filter(function (b) { return b.layer === 'front' || !b.layer; });
+    var drawBack = !layer || layer === 'back';
+    var drawFront = !layer || layer === 'front';
+    var backBuildings = drawBack ? farBuildings.filter(function (b) { return b.layer === 'back'; }) : [];
+    var frontBuildings = drawFront ? farBuildings.filter(function (b) { return b.layer === 'front' || !b.layer; }) : [];
 
-    // Back layer — darker, slower parallax (0.6x, modulo applied independently)
-    var backScrollX = (scrollX * 0.6) % FAR_TILE_W;
-    ctx.fillStyle = '#080818';
+    // Pre-compute nuke timing once for window EMP blackout
+    var nukeOn = FD.nukeActive;
+    var tMs = nukeOn ? performance.now() - FD.nukeStart : 0;
+
+    // Window light state: EMP die per-window, relight staggered per-building
+    function winLit(w, b) {
+      if (!nukeOn) return w.on;
+      if (tMs < w.die) return w.on;
+      if (tMs < w.die + 80) return Math.random() > 0.5;          // EMP flicker off
+      // Per-building staggered relight (building lightOnDelay offsets the relight)
+      var bRelight = w.relight + (b.lightOnTick || 0) * 12;      // ~0-2s extra delay per building
+      if (tMs < bRelight) return false;                            // dark period
+      if (tMs < bRelight + 120) return Math.random() > 0.4;      // relight flicker
+      return w.on;                                                 // fully restored
+    }
+
+    // Back layer — darker, slower parallax (0.6x)
+    // Modulo applied per-layer from raw scroll to prevent snap at wrap boundary
+    var frontScrollX = ((scrollX % FAR_TILE_W) + FAR_TILE_W) % FAR_TILE_W;
+    var backScrollX = ((scrollX * 0.6) % FAR_TILE_W + FAR_TILE_W) % FAR_TILE_W;
     for (var tileOff = -FAR_TILE_W; tileOff < W + FAR_TILE_W; tileOff += FAR_TILE_W) {
-      backBuildings.forEach(function (b) {
+      backBuildings.forEach(function (b, bi) {
         var bx = b.x + tileOff - backScrollX;
-        if (bx + b.w > -10 && bx < W + 10) ctx.fillRect(bx, H - GROUND_H - b.h, b.w, b.h);
+        if (bx + b.w > -10 && bx < W + 10) {
+          var bTop = H - GROUND_H - b.h;
+
+          if (b.zTower) {
+            // === Z-TOWER: Evil tapered skyscraper ===
+            // Tapered body — wider at base, narrower at top
+            var topW = b.w;
+            var botW = b.w + 10; // flares outward toward base
+            var cx = bx + b.w / 2;
+            ctx.fillStyle = '#0a0a1e';
+            ctx.beginPath();
+            ctx.moveTo(cx - topW / 2, bTop);
+            ctx.lineTo(cx + topW / 2, bTop);
+            ctx.lineTo(cx + botW / 2, H - GROUND_H);
+            ctx.lineTo(cx - botW / 2, H - GROUND_H);
+            ctx.closePath();
+            ctx.fill();
+
+            // Edge highlights (subtle purple)
+            ctx.strokeStyle = 'rgba(120,60,180,0.25)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(cx - topW / 2, bTop);
+            ctx.lineTo(cx - botW / 2, H - GROUND_H);
+            ctx.moveTo(cx + topW / 2, bTop);
+            ctx.lineTo(cx + botW / 2, H - GROUND_H);
+            ctx.stroke();
+
+            // Purple windows — adapt to tapered width
+            if (b.wins) b.wins.forEach(function (w) {
+              // Interpolate x position along taper
+              var rowT = w.dy / b.h; // 0=top, 1=bottom
+              var rowW = topW + (botW - topW) * rowT;
+              var rowLeft = cx - rowW / 2;
+              var wxScaled = rowLeft + (w.dx / b.w) * rowW;
+              var lit = winLit(w, b);
+              ctx.fillStyle = lit ? 'rgba(160,80,255,0.45)' : 'rgba(100,50,160,0.04)';
+              ctx.fillRect(wxScaled, bTop + w.dy, w.w, w.h);
+            });
+
+            // Antenna mast
+            var antX = cx;
+            var antH = 22;
+            ctx.fillStyle = '#1a1a30';
+            ctx.fillRect(antX - 1, bTop - antH, 2, antH);
+            // Pulsing red LED at tip
+            var pulse = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(FD.globalTick * 0.06));
+            ctx.fillStyle = 'rgba(255,30,20,' + pulse + ')';
+            ctx.beginPath(); ctx.arc(antX, bTop - antH, 2.5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'rgba(255,30,20,' + (pulse * 0.12) + ')';
+            ctx.beginPath(); ctx.arc(antX, bTop - antH, 9, 0, Math.PI * 2); ctx.fill();
+
+            // Large "Z" — white, flickering
+            var zScale = 2; // 2x pixel scale
+            var zW = 5 * zScale; // 10px wide
+            var zH = 7 * zScale; // 14px tall
+            var zx = cx - zW / 2;
+            var zy = bTop + 4;
+            var zFlicker = Math.sin(FD.globalTick * 0.08 + 1.7) > -0.8 ? 1 : 0.2;
+            var zBright = 0.8 * zFlicker;
+            ctx.fillStyle = 'rgba(255,255,255,' + zBright + ')';
+            // Top bar
+            ctx.fillRect(zx, zy, zW, zScale);
+            // Diagonal (3 steps)
+            ctx.fillRect(zx + 3 * zScale, zy + 1 * zScale, 2 * zScale, zScale);
+            ctx.fillRect(zx + 1.5 * zScale, zy + 2 * zScale, 2 * zScale, zScale);
+            ctx.fillRect(zx, zy + 3 * zScale, 2 * zScale, zScale);
+            // Bottom bar
+            ctx.fillRect(zx, zy + 4 * zScale, zW, zScale);
+            // White glow behind Z
+            ctx.fillStyle = 'rgba(255,255,255,' + (zBright * 0.08) + ')';
+            ctx.fillRect(zx - 3, zy - 2, zW + 6, zH + 2);
+            // Purple underglow on building face below Z
+            ctx.fillStyle = 'rgba(140,60,220,' + (0.12 * zFlicker) + ')';
+            ctx.fillRect(cx - topW / 2 + 1, zy + zH, topW - 2, 10);
+
+          } else {
+            // === Normal back-layer building ===
+            ctx.fillStyle = '#080818';
+            ctx.fillRect(bx, bTop, b.w, b.h);
+            if (b.wins) b.wins.forEach(function (w) {
+              ctx.fillStyle = winLit(w, b) ? 'rgba(255,200,55,0.35)' : 'rgba(255,200,55,0.02)';
+              ctx.fillRect(bx + w.dx, bTop + w.dy, w.w, w.h);
+            });
+          }
+        }
       });
     }
 
     // Front layer — brighter, full scroll speed
-    ctx.fillStyle = '#0c0c20';
     for (var tileOff2 = -FAR_TILE_W; tileOff2 < W + FAR_TILE_W; tileOff2 += FAR_TILE_W) {
       frontBuildings.forEach(function (b) {
-        var bx = b.x + tileOff2 - scrollX;
-        if (bx + b.w > -10 && bx < W + 10) ctx.fillRect(bx, H - GROUND_H - b.h, b.w, b.h);
+        var bx = b.x + tileOff2 - frontScrollX;
+        if (bx + b.w > -10 && bx < W + 10) {
+          ctx.fillStyle = '#0e0e24';
+          ctx.fillRect(bx, H - GROUND_H - b.h, b.w, b.h);
+          var bTop = H - GROUND_H - b.h;
+          if (b.wins) b.wins.forEach(function (w) {
+            ctx.fillStyle = winLit(w, b) ? 'rgba(255,200,55,0.4)' : 'rgba(255,200,55,0.02)';
+            ctx.fillRect(bx + w.dx, bTop + w.dy, w.w, w.h);
+          });
+        }
       });
     }
 
-    // Nuke rim light on skyline — 5s total (ramp 0.5s, hold 3s, fade 1.5s)
-    // Back layer (furthest) gets the full highlight; front layer only a faint edge.
-    var rim = nukeRimCalc(3500, 1500);
-    if (rim) {
-      ctx.save();
-
-      // Back layer rim — full intensity (furthest buildings catch the most light)
-      applyRimStyle(ctx, rim);
+    // --- Directional rim light helper ---
+    // Draws top + directional side edges based on building position relative to light source
+    function drawDirectionalRim(buildings, scrollOff, lightX, alphaScale) {
       ctx.beginPath();
-      for (var tileOff3 = -FAR_TILE_W; tileOff3 < W + FAR_TILE_W; tileOff3 += FAR_TILE_W) {
-        backBuildings.forEach(function (b) {
-          var bx = b.x + tileOff3 - backScrollX;
-          if (bx + b.w > -10 && bx < W + 10) {
-            var ty = H - GROUND_H - b.h;
-            ctx.moveTo(bx, ty);
-            ctx.lineTo(bx + b.w, ty);
+      for (var to = -FAR_TILE_W; to < W + FAR_TILE_W; to += FAR_TILE_W) {
+        buildings.forEach(function (b) {
+          var bx = b.x + to - scrollOff;
+          if (bx + b.w < -10 || bx > W + 10) return;
+          var ty = H - GROUND_H - b.h;
+          var cx = bx + b.w / 2; // building center x
+          var rel = (cx - lightX) / (W * 0.5); // -1 to +1 relative position
+
+          // Left side edge (building is to the right of light)
+          if (rel > 0.15) {
+            ctx.moveTo(bx, H - GROUND_H);
+            ctx.lineTo(bx, ty);
+          }
+          // Top edge (always)
+          ctx.moveTo(bx, ty);
+          ctx.lineTo(bx + b.w, ty);
+          // Right side edge (building is to the left of light)
+          if (rel < -0.15) {
             ctx.lineTo(bx + b.w, H - GROUND_H);
           }
         });
       }
       ctx.stroke();
+    }
 
-      // Front layer rim — faint (closest buildings are silhouetted, only catch a hint)
+    // Nuke rim light — directional from nuke center
+    var rim = nukeRimCalc(3500, 1500);
+    if (rim) {
+      ctx.save();
+      var lightX = FD.nukeGx;
+
+      // Back layer rim — full intensity
+      applyRimStyle(ctx, rim);
+      drawDirectionalRim(backBuildings, backScrollX, lightX, 1);
+
+      // Front layer rim — faint
       ctx.strokeStyle = `hsla(${rim.rimHue}, ${rim.rimSat}%, ${rim.rimLum}%, ${rim.rimAlpha * 0.15})`;
       ctx.shadowColor = `hsla(${rim.rimHue}, ${rim.rimSat}%, ${rim.rimLum + 5}%, ${rim.rimAlpha * 0.12})`;
       ctx.shadowBlur = 3;
       ctx.lineWidth = 0.5;
+      drawDirectionalRim(frontBuildings, frontScrollX, lightX, 0.15);
+
+      ctx.restore();
+    }
+
+    // Aurora rim light — soft colored glow on building tops from above (score-driven only)
+    var auroraAlpha = FD.auroraIntensity * 0.3 + 0.12;
+    if (auroraAlpha > 0.04) {
+      ctx.save();
+      var now = performance.now();
+      var aHue = 140 + Math.sin(now * 0.0008) * 60;
+
+      // Back layer — stronger aurora rim
+      ctx.strokeStyle = `hsla(${aHue}, 60%, 50%, ${auroraAlpha * 0.3})`;
+      ctx.shadowColor = `hsla(${aHue}, 60%, 45%, ${auroraAlpha * 0.2})`;
+      ctx.shadowBlur = 4;
+      ctx.lineWidth = 0.6;
       ctx.beginPath();
-      for (var tileOff4 = -FAR_TILE_W; tileOff4 < W + FAR_TILE_W; tileOff4 += FAR_TILE_W) {
-        frontBuildings.forEach(function (b) {
-          var bx = b.x + tileOff4 - scrollX;
+      for (var to5 = -FAR_TILE_W; to5 < W + FAR_TILE_W; to5 += FAR_TILE_W) {
+        backBuildings.forEach(function (b) {
+          var bx = b.x + to5 - backScrollX;
           if (bx + b.w > -10 && bx < W + 10) {
             var ty = H - GROUND_H - b.h;
             ctx.moveTo(bx, ty);
             ctx.lineTo(bx + b.w, ty);
-            ctx.lineTo(bx + b.w, H - GROUND_H);
+          }
+        });
+      }
+      ctx.stroke();
+
+      // Front layer — very subtle top edge only
+      ctx.strokeStyle = `hsla(${aHue}, 55%, 45%, ${auroraAlpha * 0.12})`;
+      ctx.shadowColor = `hsla(${aHue}, 55%, 40%, ${auroraAlpha * 0.08})`;
+      ctx.shadowBlur = 2;
+      ctx.lineWidth = 0.4;
+      ctx.beginPath();
+      for (var to6 = -FAR_TILE_W; to6 < W + FAR_TILE_W; to6 += FAR_TILE_W) {
+        frontBuildings.forEach(function (b) {
+          var bx = b.x + to6 - frontScrollX;
+          if (bx + b.w > -10 && bx < W + 10) {
+            var ty = H - GROUND_H - b.h;
+            ctx.moveTo(bx, ty);
+            ctx.lineTo(bx + b.w, ty);
           }
         });
       }
@@ -218,6 +375,16 @@
           if (streaks[c] > 3) on = false;
         }
         if (!on) streaks[c] = 0;
+        // EMP blackout during nuke — staggered per window
+        if (on && FD.nukeActive) {
+          var ne2 = performance.now() - FD.nukeStart;
+          var wDie = 200 + windowHash(seed + 1, c, row + 9) * 600;
+          var wRelight = 8500 + windowHash(seed + 2, c, row + 17) * 2000;
+          if (ne2 > wDie && ne2 < wRelight) {
+            on = (ne2 < wDie + 80) ? Math.random() > 0.5 :
+                 (ne2 > wRelight - 120) ? Math.random() > 0.4 : false;
+          }
+        }
         ctx.fillStyle = on ? 'rgba(255, 200, 60, 0.65)' : 'rgba(255, 200, 60, 0.08)';
         ctx.fillRect(wx, row, winW, winH);
       }

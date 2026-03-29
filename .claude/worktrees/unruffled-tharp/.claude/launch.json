@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "flappy-drone",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "/Users/tomvanderhegden/Library/Mobile Documents/com~apple~CloudDocs/Documents/Tomtoolery/flappy-drone", "-l", "3847", "--no-clipboard"],
+      "port": 3847
+    },
+    {
+      "name": "blast-off",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "/Users/tomvanderhegden/Library/Mobile Documents/com~apple~CloudDocs/Documents/Tomtoolery/.claude/worktrees/unruffled-tharp/blast-off", "-l", "3848", "--no-clipboard"],
+      "port": 3848
+    }
+  ]
+}

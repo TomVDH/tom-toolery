@@ -1,0 +1,81 @@
+/* tester.css — Tester-only styles (supplements game.css) */
+
+/* Override body layout for tester's side-panel arrangement */
+body {
+  display: flex !important; flex-direction: row !important; gap: 20px; padding: 20px;
+  justify-content: flex-start !important; align-items: flex-start !important;
+  height: 100vh !important; overflow: hidden;
+  color: #ccc;
+}
+
+#panel {
+  width: 240px; flex-shrink: 0;
+  display: flex; flex-direction: column; gap: 5px;
+  overflow-y: auto; max-height: calc(100vh - 40px);
+  padding-right: 8px;
+}
+#panel::-webkit-scrollbar { width: 4px; }
+#panel::-webkit-scrollbar-track { background: transparent; }
+#panel::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 2px; }
+
+h2 {
+  font-size: 11px; color: #445; letter-spacing: 2px; text-transform: uppercase;
+  margin: 14px 0 4px; padding-bottom: 4px; border-bottom: 1px solid #1a1a2a;
+}
+h2:first-of-type { margin-top: 0; }
+
+.btn-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+}
+.btn-grid-3 {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px;
+}
+.btn-row {
+  display: flex; gap: 4px;
+}
+.btn-row button { flex: 1; }
+
+button {
+  background: #111120; border: 1px solid #222235; color: #99a;
+  padding: 7px 10px; border-radius: 5px; cursor: pointer;
+  font-size: 11px; text-align: center; transition: all 0.15s;
+  font-family: 'SF Mono', 'Menlo', 'Courier New', monospace;
+}
+button:hover { background: #1a1a30; border-color: #3a3a5a; color: #dde; }
+button:active { background: #222244; }
+
+.btn-death { border-color: #3a1818; color: #c88; }
+.btn-death:hover { border-color: #553333; color: #ff8888; }
+.btn-fx { border-color: #1a2a3a; }
+.btn-fx:hover { border-color: #335566; color: #88ccff; }
+.btn-sign { border-color: #1a2a1a; font-size: 10px; }
+.btn-sign:hover { border-color: #336633; color: #88ff88; }
+.btn-nuke {
+  border-color: #ff4400; background: #1a0800; color: #ff6633;
+  font-weight: bold; letter-spacing: 1px; padding: 10px;
+}
+.btn-nuke:hover { background: #2a1000; color: #ff8844; }
+
+/* Tester canvas — no #wrap, canvas is flex child */
+canvas {
+  flex-shrink: 0; width: 620px; height: 640px;
+  border: 2px solid #1a1a3a; border-radius: 12px;
+  box-shadow: 0 0 60px #00d4ff06, 0 8px 30px #00000080;
+}
+
+.title-bar {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+}
+.title-bar h1 {
+  font-size: 16px; font-weight: 700; color: #fff; letter-spacing: 1px;
+}
+.title-bar .badge {
+  font-size: 9px; background: #ff440022; color: #ff8844;
+  padding: 2px 8px; border-radius: 10px; letter-spacing: 1px;
+}
+
+.drone-active {
+  border-color: #00c8f0 !important;
+  background: #0a1520 !important;
+  color: #0ff !important;
+}
