@@ -198,6 +198,15 @@ canvas#game {
   object-fit: contain;
 }
 
+/* Widescreen viewport variant — toggled by tester.js via body class.
+   Wider canvas, native height. NOVA's tuned pixel values stay valid. */
+body.vp-wide canvas#game {
+  max-width: none;
+  width: auto;
+  aspect-ratio: 1138 / 640;
+  max-height: calc(100vh - 24px);
+}
+
 /* --- Responsive: narrow screens --- */
 @media (max-width: 900px) {
   body { gap: 8px; padding: 8px; }

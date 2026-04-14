@@ -4,6 +4,32 @@
 
 (function () {
   const FD = window.FD;
+  // ---- Viewport mode (mobile vs widescreen) ----
+  // Persisted across reloads. Widescreen widens the canvas while keeping
+  // game-native height — supremely tuned NOVA values stay intact.
+  const VP = (function () {
+    const stored = localStorage.getItem('flappy-vp') || 'mobile';
+    const dims = stored === 'wide'
+      ? { W: 1138, H: 640 }
+      : { W: 620,  H: 640 };
+    FD.W = dims.W;
+    FD.H = dims.H;
+    const c = document.getElementById('game');
+    if (c) { c.width = dims.W; c.height = dims.H; }
+    document.body.classList.toggle('vp-wide', stored === 'wide');
+    return stored;
+  })();
+  window.setViewport = function (mode) {
+    localStorage.setItem('flappy-vp', mode);
+    location.reload();
+  };
+  // Mark the active viewport button on load (after DOM is ready)
+  setTimeout(() => {
+    const m = document.getElementById('vpMobile');
+    const w = document.getElementById('vpWide');
+    if (m) m.classList.toggle('mode-active', VP === 'mobile');
+    if (w) w.classList.toggle('mode-active', VP === 'wide');
+  }, 0);
   const W = FD.W, H = FD.H, GROUND_H = FD.GROUND_H;
   const TESTER_FRAME_MS = 1000 / 60;
   var testerLastFrame = performance.now();
