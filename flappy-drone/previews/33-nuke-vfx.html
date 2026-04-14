@@ -300,8 +300,9 @@
     <div class="speed-cluster">
       <button data-speed="0.25">·25x</button>
       <button data-speed="0.5">·5x</button>
-      <button data-speed="1" class="on">1x</button>
-      <button data-speed="2">2x</button>
+      <button data-speed="0.6" class="on">·6x</button>
+      <button data-speed="1">1x</button>
+      <button data-speed="1.5">1·5x</button>
     </div>
     <div class="vp-cluster" title="Viewport">
       <button data-vp="wide" class="on">WIDESCREEN</button>
@@ -386,6 +387,11 @@
         <label class="toggle-row"><input type="checkbox" data-fx="hotspots" checked><span class="toggle-switch"></span><span class="toggle-label">Rolling hotspots</span></label>
         <label class="toggle-row"><input type="checkbox" data-fx="cloudBands" checked><span class="toggle-switch"></span><span class="toggle-label">Cloud bands</span></label>
         <label class="toggle-row"><input type="checkbox" data-fx="afterglow" checked><span class="toggle-switch"></span><span class="toggle-label">Lingering cap glow</span></label>
+        <div class="sub-label">Cap-arc fade-in</div>
+        <div class="slider-row">
+          <label>ms: <span id="lblFadeArcs">400</span></label>
+          <input type="range" id="fadeArcs" min="0" max="2000" step="50" value="400">
+        </div>
       </div>
     </details>
 
@@ -397,6 +403,11 @@
         <label class="toggle-row"><input type="checkbox" data-fx="baseGlow" checked><span class="toggle-switch"></span><span class="toggle-label">Base radial glow</span></label>
         <label class="toggle-row"><input type="checkbox" data-fx="baseRing" checked><span class="toggle-switch"></span><span class="toggle-label">Base ring / skirt</span></label>
         <label class="toggle-row"><input type="checkbox" data-fx="fallout" checked><span class="toggle-switch"></span><span class="toggle-label">Fallout drift (custom)</span></label>
+        <div class="sub-label">Fallout fade-in</div>
+        <div class="slider-row">
+          <label>ms: <span id="lblFadeFallout">700</span></label>
+          <input type="range" id="fadeFallout" min="0" max="3000" step="50" value="700">
+        </div>
       </div>
     </details>
   </div>
@@ -500,7 +511,11 @@ window.FX_LIVE = {
   // Custom layers (drawn outside NOVA)
   capArcs: false, afterglow: true, fallout: true,
   // Shockwave style: 'nova' | 'harmonic' | 'pulse' | 'refraction' | 'combo' | 'off'
-  shockStyle: 'nova'
+  shockStyle: 'nova',
+  // Per-system fade-in durations (ms) — particles spawn invisible
+  // and ramp to full alpha over this window. 0 = no fade-in.
+  fadeInArcsMs:    400,
+  fadeInFalloutMs: 700
 };
 
 /* ===== Wire toggle inputs ===== */
@@ -514,6 +529,16 @@ document.getElementById('shockStyle').addEventListener('change', e => {
   // Hide NOVA's built-in shockwave for non-nova styles to avoid double rings
   FX_LIVE.novaShock = (e.target.value === 'nova');
 });
+function bindFadeSlider(sliderId, labelId, key) {
+  const sl = document.getElementById(sliderId);
+  const lb = document.getElementById(labelId);
+  sl.addEventListener('input', () => {
+    FX_LIVE[key] = +sl.value;
+    lb.textContent = sl.value;
+  });
+}
+bindFadeSlider('fadeArcs',    'lblFadeArcs',    'fadeInArcsMs');
+bindFadeSlider('fadeFallout', 'lblFadeFallout', 'fadeInFalloutMs');
 
 /* ===== Source-patch NOVA's drawNukeCloud ONCE at boot =====
    Each patch wraps a spawn/draw block with `&& window.FX_LIVE.<key>`.
@@ -611,25 +636,57 @@ document.getElementById('shockStyle').addEventListener('change', e => {
     'const hazeH = 60 + hazeT * 90;'   // taller ground band
   );
 
-  // 13. Continued rise — cloud keeps climbing through fade.
-  // Original: slowDrift = ... * H * 0.05 (essentially static after primary rise).
-  // New: 6× the drift so the cap continues to billow upward through the
-  // fade phase (12-14s) instead of terminating in place.
+  // 13. Continuous-rise reshape.
+  //   Original problems (post-sigmoid): cap plateaued at riseEase=1
+  //   around 3s, then sat in place until extra drift kicked in →
+  //   feels like the animation "stops" at 2-3s.
+  //   Fix:
+  //     a) Stretch cloudT span — divisor 5800 → 13000 so the cap rise
+  //        continues smoothly across nearly the entire timeline.
+  //     b) Replace sigmoid with smooth monotonic ease-in: pow(cloudT, 1.4).
+  //        Starts gentle, accelerates uniformly. No mid-plateaus, no
+  //        speed-up jolts. One continuous arc of motion.
+  //     c) Modest residual slowDrift (0.10 instead of 0.30) for a
+  //        gentle final billow into fade — no longer doing heavy lifting.
+  src = src.replace(
+    /const cloudT = Math\.min\(1, \(elapsed - 100\) \/ 5800\);/,
+    'const cloudT = Math.min(1, (elapsed - 100) / 13000);'
+  );
+  src = src.replace(
+    /const riseEase = 1 - Math\.pow\(1 - Math\.min\(1, cloudT \* 1\.5\), 3\);/,
+    'const riseEase = Math.pow(cloudT, 1.4);'
+  );
   src = src.replace(
     /const slowDrift = Math\.min\(1, elapsed \/ totalMs\) \* H \* 0\.05;/,
-    'const slowDrift = Math.min(1, elapsed / totalMs) * H * 0.30;'
+    'const slowDrift = Math.min(1, elapsed / totalMs) * H * 0.10;'
   );
 
   FD.drawNukeCloud = new Function('return ' + src)();
 })();
 
-/* Patch drawNukeOverlay — gate by whiteFlash toggle AND apply the
-   matching rise increase so the warm radial glow tracks the climbing cap. */
+/* Patch drawNukeOverlay — gate by whiteFlash toggle, brighten the
+   initial flash dramatically, and SYNC its rise math to drawNukeCloud's
+   patched sigmoid easing so the warm radial glow tracks the cap exactly
+   (was floating high in the sky while the cap stayed low). */
 (function patchOverlay() {
   let osrc = FD.drawNukeOverlay.toString();
+  // 1-2. Sync overlay rise to cap's continuous-rise math
+  osrc = osrc.replace(
+    /const cloudT = Math\.min\(1, Math\.max\(0, elapsed - 100\) \/ 3000\);/,
+    'const cloudT = Math.min(1, Math.max(0, elapsed - 100) / 13000);'
+  );
+  osrc = osrc.replace(
+    /const riseEase = 1 - Math\.pow\(1 - Math\.min\(1, cloudT \* 1\.5\), 3\);/,
+    'const riseEase = Math.pow(cloudT, 1.4);'
+  );
   osrc = osrc.replace(
     /const slowDriftOv = Math\.min\(1, elapsed \/ 11000\) \* H \* 0\.07;/,
-    'const slowDriftOv = Math.min(1, elapsed / 11000) * H * 0.34;'
+    'const slowDriftOv = Math.min(1, elapsed / 14000) * H * 0.10;'
+  );
+  // 3. BRIGHTER FLASH: 0-300ms peak 0.95 → 0-650ms peak 1.6 (clamped at 1).
+  osrc = osrc.replace(
+    /if \(elapsed < 300\) \{[\s\S]*?const ft = elapsed \/ 300;[\s\S]*?ctx\.globalAlpha = \(1 - ft \* ft\) \* 0\.95;/,
+    'if (elapsed < 650) {\n      const ft = elapsed / 650;\n      ctx.globalAlpha = Math.min(1, (1 - ft * ft * ft) * 1.6);'
   );
   const PATCHED = new Function('return ' + osrc)();
   FD.drawNukeOverlay = function () {
@@ -683,7 +740,7 @@ document.getElementById('sceneSel').addEventListener('change', e => sceneKey = e
    `performance.now() - FD.nukeStart` matches.
 */
 const state = {
-  t: 0, playing: false, paused: false, speed: 1,
+  t: 0, playing: false, paused: false, speed: 0.6,
   detonateAt: -1, pausedAt: 0, totalT: 14.0
 };
 document.querySelectorAll('[data-speed]').forEach(b => {
@@ -764,11 +821,10 @@ window.detonate = detonate;
 function capCenter() {
   const elapsedMs = performance.now() - FD.nukeStart;
   const H = FD.H;
-  const cloudT  = Math.min(1, (elapsedMs - 100) / 5800);
-  const riseEase = 1 - Math.pow(1 - Math.min(1, cloudT * 1.5), 3);
-  // Match the patched in-NOVA drift so cap-arcs / fallout / afterglow
-  // / trailing haze all track the new continued-rise behaviour.
-  const slowDrift = Math.min(1, elapsedMs / 14000) * H * 0.30;
+  // Match patched in-NOVA continuous-rise math (no plateau, smooth curve).
+  const cloudT  = Math.min(1, (elapsedMs - 100) / 13000);
+  const riseEase = Math.pow(cloudT, 1.4);
+  const slowDrift = Math.min(1, elapsedMs / 14000) * H * 0.10;
   const cY      = FD.nukeGy - riseEase * (H * 0.5) - slowDrift;
   const capGrow = Math.min(1, cloudT * 2.5);
   const capR    = 50 + capGrow * 70;
@@ -778,6 +834,9 @@ function capCenter() {
 
 /* ===== Paired particles (NOVA's de facto pattern) ===== */
 function pairedSpawn(arr, p) {
+  // bornAt + fadeKey instead of fixed life-fraction, so fade-in duration
+  // is read live from FX_LIVE every frame (slider takes effect).
+  const bornAt = performance.now();
   arr.push({
     kind: 'streak',
     x: p.x, y: p.y, vx: p.vx, vy: p.vy,
@@ -785,7 +844,7 @@ function pairedSpawn(arr, p) {
     r: 2 + Math.random() * 1.5,
     hue: 25 + Math.random() * 10, sat: 100, lum: 75,
     damping: p.damping, gravity: p.gravity,
-    trail: [], fadeIn: p.fadeIn || 0
+    trail: [], bornAt, fadeKey: p.fadeKey
   });
   arr.push({
     kind: 'glow',
@@ -794,7 +853,7 @@ function pairedSpawn(arr, p) {
     r: 15 + Math.random() * 20,
     hue: 15 + Math.random() * 10, sat: 100, lum: 65,
     damping: p.damping, gravity: p.gravity,
-    fadeIn: p.fadeIn || 0
+    bornAt, fadeKey: p.fadeKey
   });
 }
 function updatePaired(arr) {
@@ -812,10 +871,14 @@ function updatePaired(arr) {
   }
 }
 function drawPaired(arr) {
+  const now = performance.now();
   for (const p of arr) {
     const t01 = p.life / p.maxLife;
-    const age01 = 1 - t01;
-    let aMul = (p.fadeIn > 0 && age01 < p.fadeIn) ? age01 / p.fadeIn : t01;
+    // ms-based fade-in read live from FX_LIVE so slider tweaks work
+    const fadeMs = (p.fadeKey && FX_LIVE[p.fadeKey]) || 0;
+    const age = now - (p.bornAt || now);
+    const fadeInA = (fadeMs > 0 && age < fadeMs) ? (age / fadeMs) : 1;
+    let aMul = fadeInA * t01;
     if (aMul < 0.02) continue;
     if (p.kind === 'glow') {
       ctx.save();
@@ -867,7 +930,8 @@ function spawnFallout() {
   pairedSpawn(FALLOUT, {
     x: px, y: py, vx, vy,
     life: 3000 + Math.random() * 1200, maxLife: 4200,
-    damping: 0.9995, gravity: 0.0008, fadeIn: 0.10
+    damping: 0.9995, gravity: 0.0008,
+    fadeKey: 'fadeInFalloutMs'
   });
 }
 
@@ -901,7 +965,8 @@ function spawnCapArcs() {
     x: px, y: py, vx, vy,
     life: 1600 + Math.random() * 500, maxLife: 2100,
     // Higher damping + gravity ⇒ shorter average travel distance
-    damping: 0.985, gravity: 0.0035, fadeIn: 0.08
+    damping: 0.985, gravity: 0.0035,
+    fadeKey: 'fadeInArcsMs'
   });
 }
 
