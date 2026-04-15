@@ -839,7 +839,7 @@ function pairedSpawn(arr, p) {
     r: (2 + Math.random() * 1.5) * S,
     hue: 25 + Math.random() * 10, sat: 100, lum: 75,
     damping: p.damping, gravity: p.gravity,
-    trail: [], bornAt, fadeKey: p.fadeKey
+    trail: [], bornAt, fadeKey: p.fadeKey, fadeCurve: p.fadeCurve
   });
   arr.push({
     kind: 'glow',
@@ -848,7 +848,7 @@ function pairedSpawn(arr, p) {
     r: (15 + Math.random() * 20) * S,
     hue: 15 + Math.random() * 10, sat: 100, lum: 65,
     damping: p.damping, gravity: p.gravity,
-    bornAt, fadeKey: p.fadeKey
+    bornAt, fadeKey: p.fadeKey, fadeCurve: p.fadeCurve
   });
 }
 function updatePaired(arr) {
@@ -868,12 +868,18 @@ function updatePaired(arr) {
 function drawPaired(arr) {
   const now = performance.now();
   for (const p of arr) {
-    const t01 = p.life / p.maxLife;
+    const t01 = p.life / p.maxLife;              // 1 fresh → 0 dead
     // ms-based fade-in read live from FX_LIVE so slider tweaks work
     const fadeMs = (p.fadeKey && FX_LIVE[p.fadeKey]) || 0;
     const age = now - (p.bornAt || now);
     const fadeInA = (fadeMs > 0 && age < fadeMs) ? (age / fadeMs) : 1;
-    let aMul = fadeInA * t01;
+    // Fade-OUT curve — pow(t01, 0.18) keeps alpha near 1 for most of
+    // life, then gently rolls off. Produces a much slower 100→0
+    // decay than the old linear t01.  Per-particle override via
+    // p.fadeCurve (lower = slower fade-out, 1 = linear).
+    const curve = p.fadeCurve || 0.18;
+    const fadeOutA = Math.pow(t01, curve);
+    let aMul = fadeInA * fadeOutA;
     if (aMul < 0.02) continue;
     const age01 = 1 - t01;   // 0 fresh → 1 dead, used by streak colour-cool
     if (p.kind === 'glow') {
@@ -925,10 +931,12 @@ function spawnFallout() {
   const vx = (Math.random() - 0.5) * 0.04;
   pairedSpawn(FALLOUT, {
     x: px, y: py, vx, vy,
-    life: 3000 + Math.random() * 1200, maxLife: 4200,
+    // Extended life so the tail from 100→0 is extremely gentle
+    life: 6000 + Math.random() * 2400, maxLife: 8400,
     damping: 0.9995, gravity: 0.0008,
     fadeKey: 'fadeInFalloutMs',
-    sizeScale: 0.22    // much smaller than stem particles
+    sizeScale: 0.22,   // much smaller than stem particles
+    fadeCurve: 0.10    // very slow fade-out (pow(t01, 0.10))
   });
 }
 
