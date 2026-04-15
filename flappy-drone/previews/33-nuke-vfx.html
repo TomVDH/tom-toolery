@@ -298,11 +298,11 @@
 <div class="timeline">
   <div class="timeline-head">
     <div class="speed-cluster">
-      <button data-speed="0.25">·25x</button>
       <button data-speed="0.5">·5x</button>
-      <button data-speed="0.6" class="on">·6x</button>
+      <button data-speed="0.75">·75x</button>
       <button data-speed="1">1x</button>
-      <button data-speed="1.5">1·5x</button>
+      <button data-speed="1.3" class="on">1·3x</button>
+      <button data-speed="1.8">1·8x</button>
     </div>
     <div class="vp-cluster" title="Viewport">
       <button data-vp="wide" class="on">WIDESCREEN</button>
@@ -383,7 +383,7 @@
     <details open>
       <summary>Cap</summary>
       <div class="section-body">
-        <label class="toggle-row"><input type="checkbox" data-fx="capEdge" checked><span class="toggle-switch"></span><span class="toggle-label">Cap-edge debris (NOVA)</span></label>
+        <label class="toggle-row"><input type="checkbox" data-fx="capEdge"><span class="toggle-switch"></span><span class="toggle-label">Cap-edge debris (NOVA big glow)</span></label>
         <label class="toggle-row"><input type="checkbox" data-fx="capArcs"><span class="toggle-switch"></span><span class="toggle-label">Cap-edge arcs (custom)</span></label>
         <label class="toggle-row"><input type="checkbox" data-fx="hotspots" checked><span class="toggle-switch"></span><span class="toggle-label">Rolling hotspots</span></label>
         <label class="toggle-row"><input type="checkbox" data-fx="cloudBands" checked><span class="toggle-switch"></span><span class="toggle-label">Cloud bands</span></label>
@@ -509,7 +509,7 @@ window.FX_LIVE = {
   // Stem
   midStem: true, wideStem: true, stemCore: true,
   // Cap
-  capEdge: true, hotspots: true, cloudBands: true,
+  capEdge: false, hotspots: true, cloudBands: true,
   // Ground
   baseFire: true, groundFires: true, baseGlow: true, baseRing: true,
   // Custom layers (drawn outside NOVA)
@@ -720,7 +720,7 @@ document.getElementById('sceneSel').addEventListener('change', e => sceneKey = e
    desyncs between the rAF loop and NOVA's `performance.now()` math.
 */
 const state = {
-  t: 0, playing: false, paused: false, speed: 0.6, totalT: 14.0
+  t: 0, playing: false, paused: false, speed: 1.3, totalT: 14.0
 };
 document.querySelectorAll('[data-speed]').forEach(b => {
   b.addEventListener('click', () => {
