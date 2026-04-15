@@ -361,11 +361,11 @@
         <label class="toggle-row"><input type="checkbox" data-fx="trailHaze" checked><span class="toggle-switch"></span><span class="toggle-label">Cap-trailing sky haze</span></label>
         <div class="sub-label">Shockwave</div>
         <select id="shockStyle">
+          <option value="combo" selected>Refraction snap → Soft bloom</option>
           <option value="nova">NOVA tight ring</option>
           <option value="harmonic">Harmonic (2 rings)</option>
           <option value="pulse">Soft pulse</option>
           <option value="refraction">Refraction lens</option>
-          <option value="combo">Refraction snap → Soft bloom</option>
           <option value="off">Off</option>
         </select>
       </div>
@@ -505,7 +505,7 @@ window.addEventListener('resize', () => applyViewport());
 /* ===== FX_LIVE — global toggle state read by patched NOVA ===== */
 window.FX_LIVE = {
   // Stage
-  whiteFlash: true, godRays: false, haze: true, trailHaze: true, novaShock: true,
+  whiteFlash: true, godRays: false, haze: true, trailHaze: true, novaShock: false,
   // Stem
   midStem: true, wideStem: true, stemCore: true,
   // Cap
@@ -515,7 +515,7 @@ window.FX_LIVE = {
   // Custom layers (drawn outside NOVA)
   capArcs: false, afterglow: true, fallout: false,
   // Shockwave style: 'nova' | 'harmonic' | 'pulse' | 'refraction' | 'combo' | 'off'
-  shockStyle: 'nova',
+  shockStyle: 'combo',
   // Per-system fade-in durations (ms) — particles spawn invisible
   // and ramp to full alpha over this window. 0 = no fade-in.
   fadeInArcsMs:    400,
