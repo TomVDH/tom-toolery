@@ -285,7 +285,8 @@
       <summary>Scene</summary>
       <div class="section-body">
         <select id="sceneSel">
-          <option value="night">Night (game default)</option>
+          <option value="day">Day</option>
+          <option value="night" selected>Night (game default)</option>
           <option value="dawn">Dawn</option>
           <option value="dusk">Dusk</option>
           <option value="blackout">Blackout</option>
@@ -434,6 +435,7 @@ new ResizeObserver(applyViewport).observe(cv);
 
 /* ===== Scene ===== */
 const SCENES = {
+  day:      { skyTop:'#6ab0e8', skyBot:'#c8e4f5', ground:'#3a4028' },
   night:    { skyTop:'#040616', skyBot:'#100a14', ground:'#0a0608' },
   dawn:     { skyTop:'#1a1838', skyBot:'#7a3a36', ground:'#2c1a18' },
   dusk:     { skyTop:'#0c1028', skyBot:'#3a1838', ground:'#180a18' },

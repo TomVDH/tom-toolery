@@ -337,6 +337,7 @@
       <button data-speed="1.5">1·5x</button>
     </div>
     <div class="scene-cluster" style="margin-left:12px" title="Scene palette">
+      <button data-scene="day">DAY</button>
       <button data-scene="night" class="on">NIGHT</button>
       <button data-scene="dawn">DAWN</button>
       <button data-scene="overcast">OVERCAST</button>
@@ -791,7 +792,8 @@ document.querySelectorAll('#iSignBtns button').forEach(btn => {
 
 /* ===== Scene palettes — wrap FD.drawSky to retint ===== */
 const SCENES = {
-  night:    { top:'#050510', mid:'#0a0a22', bot:'#101030', groundTint: null, starAlpha: 1,  mountTint: null,     cloudBoost: 1 },
+  day:      { top:'#5aa0e0', mid:'#95c8ee', bot:'#c8e4f5', groundTint: '#3a4028', starAlpha: 0, mountTint: '#9ab4c8', cloudBoost: 2 },
+  night:    { top:'#050510', mid:'#0a0a22', bot:'#101030', groundTint: null,      starAlpha: 1,  mountTint: null,      cloudBoost: 1 },
   dawn:     { top:'#1a1838', mid:'#4a2838', bot:'#7a3a36', groundTint: '#2c1a18', starAlpha: 0.25, mountTint: '#201424', cloudBoost: 2 },
   overcast: { top:'#2a2c30', mid:'#3a3840', bot:'#4a4548', groundTint: '#1c1a1c', starAlpha: 0, mountTint: '#2a2830', cloudBoost: 4 },
   dust:     { top:'#3c1a08', mid:'#3a1a08', bot:'#2a1408', groundTint: '#1c0e08', starAlpha: 0, mountTint: '#281408', cloudBoost: 3 }

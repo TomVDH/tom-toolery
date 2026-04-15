@@ -822,6 +822,86 @@
   // --- Init: wire up shared ctx and start ---
   FD.ctx = ctx;
   FD.canvas = canvas;
+
+  // ============================================================
+  // Time-of-Day: wraps FD.drawSky / drawStars / drawMoon so the
+  // lab can re-tint the backdrop without touching background.js.
+  // ============================================================
+  var TOD_PALETTES = {
+    day:      { top:'#5aa0e0', mid:'#95c8ee', bot:'#c8e4f5', starA:0,    moonDim:0.20 },
+    night:    null,  // null = pass-through to original drawSky
+    dawn:     { top:'#1a1838', mid:'#4a2838', bot:'#7a3a36', starA:0.30, moonDim:0.85 },
+    dusk:     { top:'#0c1028', mid:'#3a1838', bot:'#604060', starA:0.55, moonDim:1.00 },
+    overcast: { top:'#2a2c30', mid:'#3a3840', bot:'#4a4548', starA:0.0,  moonDim:0.55 }
+  };
+  var currentTod = localStorage.getItem('flappy-tod') || 'night';
+  (function wrapBackground() {
+    var origSky   = FD.drawSky;
+    var origStars = FD.drawStars;
+    var origMoon  = FD.drawMoon;
+    FD.drawSky = function () {
+      var p = TOD_PALETTES[currentTod];
+      if (!p) return origSky.apply(this, arguments);
+      var g = FD.ctx.createLinearGradient(0, 0, 0, FD.H);
+      g.addColorStop(0,   p.top);
+      g.addColorStop(0.5, p.mid);
+      g.addColorStop(1,   p.bot);
+      FD.ctx.fillStyle = g;
+      FD.ctx.fillRect(0, 0, FD.W, FD.H);
+      // Retain the nuke sky brightening from original
+      if (FD.nukeActive) {
+        var elapsed = performance.now() - FD.nukeStart;
+        var skyBright = 0;
+        if (elapsed < 1000) skyBright = elapsed / 1000;
+        else if (elapsed < 7000) skyBright = 1;
+        else skyBright = Math.max(0, 1 - (elapsed - 7000) / 4000);
+        if (skyBright > 0.01) {
+          var sg = FD.ctx.createLinearGradient(0, FD.H, 0, 0);
+          sg.addColorStop(0,   'hsla(15, 90%, 20%, ' + (skyBright * 0.35) + ')');
+          sg.addColorStop(0.4, 'hsla(20, 80%, 12%, ' + (skyBright * 0.2)  + ')');
+          sg.addColorStop(1,   'hsla(25, 60%,  6%, ' + (skyBright * 0.08) + ')');
+          FD.ctx.fillStyle = sg;
+          FD.ctx.fillRect(0, 0, FD.W, FD.H);
+        }
+      }
+    };
+    FD.drawStars = function () {
+      var p = TOD_PALETTES[currentTod];
+      if (!p) return origStars.apply(this, arguments);
+      if (p.starA < 0.02) return;
+      FD.ctx.save();
+      FD.ctx.globalAlpha = p.starA;
+      origStars.apply(this, arguments);
+      FD.ctx.restore();
+    };
+    FD.drawMoon = function () {
+      var p = TOD_PALETTES[currentTod];
+      if (!p) return origMoon.apply(this, arguments);
+      if (p.moonDim < 0.02) return;
+      FD.ctx.save();
+      FD.ctx.globalAlpha = p.moonDim;
+      origMoon.apply(this, arguments);
+      FD.ctx.restore();
+    };
+  })();
+  window.setTod = function (mode) {
+    if (!(mode in TOD_PALETTES)) return;
+    currentTod = mode;
+    localStorage.setItem('flappy-tod', mode);
+    document.querySelectorAll('#todCluster button').forEach(function (b) {
+      b.classList.toggle('mode-active', b.dataset.tod === mode);
+    });
+  };
+  // Wire ToD buttons + mark active on boot
+  setTimeout(function () {
+    var btns = document.querySelectorAll('#todCluster button');
+    btns.forEach(function (b) {
+      b.addEventListener('click', function () { window.setTod(b.dataset.tod); });
+      if (b.dataset.tod === currentTod) b.classList.add('mode-active');
+      else b.classList.remove('mode-active');
+    });
+  }, 0);
+
   render();
 
   // --- Nuke resilience: when tab becomes visible again, re-anchor

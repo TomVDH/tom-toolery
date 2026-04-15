@@ -219,7 +219,7 @@
   /* Layered phase timeline (multi-row) */
   .phase-rail {
     position: relative;
-    height: 50px;
+    height: 72px;
     background: #06060e;
     border: 1px solid #14142a;
     border-radius: 5px;
@@ -341,7 +341,8 @@
       <summary>Scene</summary>
       <div class="section-body">
         <select id="sceneSel">
-          <option value="night">Night (game default)</option>
+          <option value="day">Day</option>
+          <option value="night" selected>Night (game default)</option>
           <option value="dawn">Dawn</option>
           <option value="overcast">Overcast</option>
           <option value="dust">Dust</option>
@@ -703,6 +704,7 @@ function buildCity() { /* kept as a no-op shim; resize() still calls it */ }
 
 /* ===== Scenes ===== */
 const SCENES = {
+  day:      { skyTop:'#6ab0e8', skyBot:'#c8e4f5', ground:'#3a4028', star:0.0,  haze:0.22 },
   night:    { skyTop:'#040616', skyBot:'#100a14', ground:'#0a0608', star:0.7,  haze:0.0 },
   dawn:     { skyTop:'#1a1838', skyBot:'#7a3a36', ground:'#2c1a18', star:0.15, haze:0.25 },
   overcast: { skyTop:'#2a2c30', skyBot:'#4a4548', ground:'#1c1a1c', star:0.0,  haze:0.4  },
@@ -846,6 +848,7 @@ function drawPaired(arr) {
     const fadeInA = (fadeMs > 0 && age < fadeMs) ? (age / fadeMs) : 1;
     let aMul = fadeInA * t01;
     if (aMul < 0.02) continue;
+    const age01 = 1 - t01;   // 0 fresh → 1 dead, used by streak colour-cool
     if (p.kind === 'glow') {
       ctx.save();
       const useAdd = p.lum > 70;
@@ -1270,7 +1273,7 @@ const PHASES = [
   { t0:12.0, t1:14.0,lab:'FADE',         row:0 },
   { t0:0.2,  t1:2.8, lab:'SHOCK · DUST', row:1 },
   { t0:1.8,  t1:8.0, lab:'DEBRIS DRIFT', row:1 },
-  { t0:1.8,  t1:12.5,lab:'FALLOUT',      row:1 },
+  { t0:1.8,  t1:12.5,lab:'FALLOUT',      row:2 },
 ];
 const phaseRail = document.getElementById('phaseRail');
 PHASES.forEach((p, i) => {
