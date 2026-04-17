@@ -125,6 +125,74 @@
     }
   };
 
+  // --- Cap-center math (shared by fallout/capArcs/afterglow/trailHaze) ---
+  // Matches the NOVA MK-V baseline: cloudT/5800, cubic-out ease, 0.05 drift.
+  FD.capCenter = function () {
+    const elapsedMs = performance.now() - FD.nukeStart;
+    const H = FD.H;
+    const cloudT   = Math.min(1, (elapsedMs - 100) / 5800);
+    const riseEase = 1 - Math.pow(1 - Math.min(1, cloudT * 1.5), 3);
+    const slowDrift = Math.min(1, elapsedMs / 14000) * H * 0.05;
+    const cY      = FD.nukeGy - riseEase * (H * 0.5) - slowDrift;
+    const capGrow = Math.min(1, cloudT * 2.5);
+    const capR    = 50 + capGrow * 70;
+    const capRx   = capR * 1.5;
+    return { cY, capR, capRx, elapsedMs };
+  };
+
+  // --- Fallout: very sparse, slow, paired, fades in (lab 33 default OFF, ship ON) ---
+  FD.spawnFallout = function () {
+    if (!FD.NUKE_FX.fallout || !FD.nukeActive) return;
+    const { cY, capR, capRx, elapsedMs } = FD.capCenter();
+    if (elapsedMs < 1800 || elapsedMs > 12500) return;
+    if (FD.FALLOUT.length > 80) return;
+    if (Math.random() > 0.04) return;
+    const px = FD.nukeGx + (Math.random() - 0.5) * capRx * 1.4;
+    const py = cY + capR * (-0.05 + Math.random() * 0.35);
+    const vy = 0.05 + Math.random() * 0.18;
+    const vx = (Math.random() - 0.5) * 0.04;
+    FD.pairedSpawn(FD.FALLOUT, {
+      x: px, y: py, vx, vy,
+      life: 6000 + Math.random() * 2400, maxLife: 8400,
+      damping: 0.9995, gravity: 0.0008,
+      fadeKey: 'fadeInFalloutMs',
+      sizeScale: 0.22,   // much smaller than stem particles
+      fadeCurve: 0.10    // very slow 100→0 fade-out
+    });
+  };
+
+  // --- Cap-edge arcs: paired, mixed-speed, earlier start, shorter range ---
+  FD.spawnCapArcs = function () {
+    if (!FD.NUKE_FX.capArcs || !FD.nukeActive) return;
+    const { cY, capR, capRx, elapsedMs } = FD.capCenter();
+    if (elapsedMs < 700 || elapsedMs > 6500) return;
+    if (FD.CAP_ARCS.length > 70) return;
+    if (Math.random() > 0.20) return;
+    const dir = Math.random() < 0.5 ? -1 : 1;
+    const pa = -Math.PI * 0.5 + dir * (0.05 + Math.random() * 0.55) * Math.PI * 0.5;
+    const px = FD.nukeGx + Math.cos(pa) * capRx * (0.78 + Math.random() * 0.18);
+    const py = cY        + Math.sin(pa) * capR  * (0.68 + Math.random() * 0.22);
+    // Mixed velocities — three tiers: slow drift / medium / quick
+    const tier = Math.random();
+    let vx, vy;
+    if (tier < 0.30) {        // slow drifters (~30%)
+      vx = dir * (0.10 + Math.random() * 0.12);
+      vy = -0.02 - Math.random() * 0.08;
+    } else if (tier < 0.80) { // medium (~50%)
+      vx = dir * (0.20 + Math.random() * 0.18);
+      vy = -0.05 - Math.random() * 0.10;
+    } else {                  // quick (~20%)
+      vx = dir * (0.40 + Math.random() * 0.25);
+      vy = -0.10 - Math.random() * 0.15;
+    }
+    FD.pairedSpawn(FD.CAP_ARCS, {
+      x: px, y: py, vx, vy,
+      life: 1600 + Math.random() * 500, maxLife: 2100,
+      damping: 0.985, gravity: 0.0035,
+      fadeKey: 'fadeInArcsMs'
+    });
+  };
+
   // --- Thrust particles ---
   FD.spawnThrust = function (droneX, droneY) {
     // Hot exhaust particles
