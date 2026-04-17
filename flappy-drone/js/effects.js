@@ -34,6 +34,97 @@
   FD.FALLOUT  = [];
   FD.CAP_ARCS = [];
 
+  // --- Paired-particle pattern (from NOVA MK-V Lab) ---
+  // Each call pushes a streak + a glow with shared kinematics. Optional
+  // p.sizeScale multiplies radii for smaller/larger pairs.
+  FD.pairedSpawn = function (arr, p) {
+    const bornAt = performance.now();
+    const S = p.sizeScale || 1;
+    arr.push({
+      kind: 'streak',
+      x: p.x, y: p.y, vx: p.vx, vy: p.vy,
+      life: p.life, maxLife: p.maxLife,
+      r: (2 + Math.random() * 1.5) * S,
+      hue: 25 + Math.random() * 10, sat: 100, lum: 75,
+      damping: p.damping, gravity: p.gravity,
+      trail: [], bornAt, fadeKey: p.fadeKey, fadeCurve: p.fadeCurve
+    });
+    arr.push({
+      kind: 'glow',
+      x: p.x, y: p.y, vx: p.vx, vy: p.vy,
+      life: p.life, maxLife: p.maxLife,
+      r: (15 + Math.random() * 20) * S,
+      hue: 15 + Math.random() * 10, sat: 100, lum: 65,
+      damping: p.damping, gravity: p.gravity,
+      bornAt, fadeKey: p.fadeKey, fadeCurve: p.fadeCurve
+    });
+  };
+
+  FD.updatePaired = function (arr) {
+    for (let i = arr.length - 1; i >= 0; i--) {
+      const p = arr[i];
+      p.life--;
+      if (p.life <= 0) { arr.splice(i, 1); continue; }
+      if (p.kind === 'streak') {
+        p.trail.push({ x: p.x, y: p.y });
+        if (p.trail.length > 12) p.trail.shift();
+      }
+      p.x += p.vx; p.y += p.vy;
+      p.vx *= p.damping;
+      p.vy = p.vy * p.damping + p.gravity;
+    }
+  };
+
+  FD.drawPaired = function (arr) {
+    const ctx = FD.ctx;
+    const now = performance.now();
+    for (const p of arr) {
+      const t01 = p.life / p.maxLife;           // 1 fresh → 0 dead
+      const fadeMs = (p.fadeKey && FD.NUKE_FX[p.fadeKey]) || 0;
+      const age = now - (p.bornAt || now);
+      const fadeInA = (fadeMs > 0 && age < fadeMs) ? (age / fadeMs) : 1;
+      const curve = p.fadeCurve || 0.18;
+      const fadeOutA = Math.pow(t01, curve);
+      let aMul = fadeInA * fadeOutA;
+      if (aMul < 0.02) continue;
+      const age01 = 1 - t01;
+      if (p.kind === 'glow') {
+        ctx.save();
+        const useAdd = p.lum > 70;
+        if (useAdd) ctx.globalCompositeOperation = 'lighter';
+        const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * t01);
+        grad.addColorStop(0,    `hsla(${p.hue}, ${p.sat}%, ${p.lum}%, ${aMul * 0.8})`);
+        grad.addColorStop(0.25, `hsla(${p.hue}, ${p.sat}%, ${p.lum - 10}%, ${aMul * 0.4})`);
+        grad.addColorStop(0.6,  `hsla(${p.hue}, ${p.sat}%, ${p.lum - 25}%, ${aMul * 0.1})`);
+        grad.addColorStop(1,    `hsla(${p.hue}, ${p.sat}%, ${p.lum - 30}%, 0)`);
+        ctx.fillStyle = grad;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * t01, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      } else {
+        ctx.save();
+        const sHue = p.hue - age01 * 18;
+        const sSat = Math.max(20, p.sat - age01 * 70);
+        const sLum = Math.max(12, p.lum + (1 - age01) * 20 - age01 * 30);
+        if (p.trail.length > 1) {
+          ctx.globalAlpha = aMul * 0.6;
+          ctx.strokeStyle = `hsl(${sHue}, ${sSat * 0.7}%, ${sLum * 0.6}%)`;
+          ctx.lineWidth = p.r * t01 * 0.5;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(p.trail[0].x, p.trail[0].y);
+          for (let k = 1; k < p.trail.length; k++) ctx.lineTo(p.trail[k].x, p.trail[k].y);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+        ctx.globalAlpha = aMul * 0.7;
+        ctx.fillStyle = `hsl(${sHue}, ${sSat}%, ${Math.min(95, sLum + 15)}%)`;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * t01 * 0.6, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.restore();
+      }
+    }
+  };
+
   // --- Thrust particles ---
   FD.spawnThrust = function (droneX, droneY) {
     // Hot exhaust particles
