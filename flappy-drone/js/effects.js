@@ -368,6 +368,40 @@
     ctx.restore();
   };
 
+  // --- Orchestrator: called once per frame by game / tester / city-lab ---
+  // Handles spawn + update of paired arrays. Safe to call every frame —
+  // internally gated by FD.nukeActive (for spawning) and always runs
+  // update so existing particles finish their lifetime post-nuke.
+  FD.tickNuke = function () {
+    if (FD.nukeActive) {
+      FD.spawnFallout();
+      FD.spawnCapArcs();
+    }
+    FD.updatePaired(FD.FALLOUT);
+    FD.updatePaired(FD.CAP_ARCS);
+  };
+
+  // --- Orchestrator: called by render pipeline to draw all non-cloud layers.
+  // Caller still invokes FD.drawNukeCloud() directly — this handles the
+  // auxiliary layers (trailHaze behind, afterglow / paired / shockwave in front).
+  // Intended order: drawBehindNukeCloud() → drawNukeCloud() → drawInFrontNukeCloud()
+  //
+  // drawBehindNukeCloud uses a simple !nukeActive guard because trailHaze has
+  // no particle array to drain. If a future behind-layer with stateful
+  // particles is added, move it to drawInFrontNukeCloud or add its own drain
+  // condition matching the drawInFrontNukeCloud pattern.
+  FD.drawBehindNukeCloud = function () {
+    if (!FD.nukeActive) return;
+    FD.drawCapTrailingHaze();
+  };
+  FD.drawInFrontNukeCloud = function () {
+    if (!FD.nukeActive && FD.FALLOUT.length === 0 && FD.CAP_ARCS.length === 0) return;
+    FD.drawCapAfterglow();
+    FD.drawPaired(FD.CAP_ARCS);
+    FD.drawPaired(FD.FALLOUT);
+    FD.drawShockwave();
+  };
+
   // --- Thrust particles ---
   FD.spawnThrust = function (droneX, droneY) {
     // Hot exhaust particles
