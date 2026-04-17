@@ -1017,6 +1017,9 @@ function frame() {
   document.getElementById('hudTime').textContent = FD.nukeActive ? (elapsedMs / 1000).toFixed(2) + ' s' : '—';
   document.getElementById('rT').textContent      = FD.nukeActive ? (elapsedMs / 1000).toFixed(2) + 's' : '—';
 
+  // Tick nuke orchestrator (spawn + update paired arrays)
+  FD.tickNuke();
+
   // ======== RENDER ========
   ctx.clearRect(0, 0, FD.W, FD.H);
 
@@ -1035,6 +1038,7 @@ function frame() {
 
   // Nuke cloud drawn behind front so foreground silhouettes the cloud
   if (FD.nukeActive) {
+    FD.drawBehindNukeCloud();
     FD.drawNukeCloud();
   }
 
@@ -1059,6 +1063,7 @@ function frame() {
   // Foreground particles + nuke overlay
   FD.drawParticles(true);
   if (FD.nukeActive) {
+    FD.drawInFrontNukeCloud();
     FD.drawNukeOverlay();
   }
 
