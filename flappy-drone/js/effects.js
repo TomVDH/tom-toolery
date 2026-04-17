@@ -1111,7 +1111,10 @@
     if (elapsed > totalMs) FD.nukeActive = false;
   };
 
-  // --- Nuke overlay: white flash + radial warm glow ---
+  // --- Nuke overlay: white flash (brighter + longer) + radial warm glow ---
+  // White flash gated by FD.NUKE_FX.whiteFlash. Flash window expanded
+  // from 0-300 ms (peak 0.95) to 0-650 ms (peak 1.6 clamped at 1). Radial
+  // glow rise math unchanged (matches drawNukeCloud).
   FD.drawNukeOverlay = function () {
     if (!FD.nukeActive) return;
     const ctx = FD.ctx;
@@ -1122,16 +1125,16 @@
     const slowDriftOv = Math.min(1, elapsed / 11000) * H * 0.07;
     const cloudCenterY = FD.nukeGy - riseEase * (H * 0.45) - slowDriftOv;
 
-    // Blinding white flash (0-300ms)
-    if (elapsed < 300) {
-      const ft = elapsed / 300;
-      ctx.globalAlpha = (1 - ft * ft) * 0.95;
+    // Blinding white flash — 0-650ms, peak 1.6, clamped
+    if (elapsed < 650 && FD.NUKE_FX.whiteFlash) {
+      const ft = elapsed / 650;
+      ctx.globalAlpha = Math.min(1, (1 - ft * ft * ft) * 1.6);
       ctx.fillStyle = '#fff';
       ctx.fillRect(0, 0, W, H);
       ctx.globalAlpha = 1;
     }
 
-    // Warm radial glow from mushroom position (0-7s)
+    // Warm radial glow (0-7s)
     if (elapsed < 7000) {
       const lt = elapsed / 7000;
       const intensity = (1 - lt * lt) * 0.45;
