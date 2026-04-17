@@ -4,12 +4,12 @@
   "session_id": "2026-04-16T20:16:00Z",
   "project_name": "Flappy Drone",
   "codename": "Unify",
-  "status": "active",
+  "status": "parked",
   "crew_notes_path": "/Users/tomlinson/Library/Mobile Documents/com~apple~CloudDocs/Projects/VIBE CODING/tomtoolery/.claude/worktrees/romantic-lamport/crew-notes",
 
-  "active_specialist": "Kevijntje",
-  "active_task": "PR 1 landed \u2014 awaiting visual smoke test, then PR 2 widescreen planning",
-  "collaboration": ["Henske lead", "Thieuke review", "Jonasty QA", "Bostrol docs"],
+  "active_specialist": null,
+  "active_task": "Parked \u2014 PR 1 landed, visual smoke test passed (tester layout glitch was stale cache), PR 2 widescreen on deck for next session",
+  "collaboration": null,
 
   "gates": {
     "completed": [
@@ -17,9 +17,10 @@
       "design-spec-committed",
       "pr1-nuke-plan-committed",
       "pr1-nuke-14-tasks-implemented",
-      "pr1-nuke-final-review-merge-ready"
+      "pr1-nuke-final-review-merge-ready",
+      "pr1-visual-smoke-test-pass-cache-glitch"
     ],
-    "current": "pr1-visual-smoke-test-pending",
+    "current": null,
     "total_planned": 9
   },
 
