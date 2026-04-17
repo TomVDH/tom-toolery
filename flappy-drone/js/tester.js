@@ -708,6 +708,7 @@
     updatePipeScroll();
     updateMilestone();
     FD.updateNearMiss();
+    FD.tickNuke();
     FD.updateParticles();
     FD.updateFireworks();
   }
@@ -741,6 +742,7 @@
       ctx.translate(-W / 2, -scaleOriginY);
     }
     if (layerVisible.backCity) FD.drawFarCity(scrollX, 'back');
+    FD.drawBehindNukeCloud();
     FD.drawNukeCloud();
     if (layerVisible.frontCity) FD.drawFarCity(scrollX, 'front');
     if (parScale !== 1.0) ctx.restore();
@@ -797,6 +799,7 @@
     drawCountdown();
     drawFlash();
     FD.drawDeathSequence(youDiedActive ? 'dying' : 'menu', youDiedTimer);
+    FD.drawInFrontNukeCloud();
     FD.drawNukeOverlay();
     if (speedFxEnabled) FD.drawSpeedIndicator(speedFxValue);
     drawMilestone();
