@@ -517,6 +517,20 @@
   // Two-pass: call with isFg=false for background, isFg=true for foreground.
   FD.drawParticles = function (isFg) {
     const ctx = FD.ctx;
+    const now = performance.now();
+    // Temporarily scale p.life down during _fadeInMs window so the existing
+    // alpha math (derived from p.life / p.maxLife) emerges as transparent
+    // → opaque over the chosen duration. Restored after draw.
+    const restore = [];
+    for (const p of FD.particles) {
+      if (p._fadeInMs && p._bornAt) {
+        const age = now - p._bornAt;
+        if (age < p._fadeInMs) {
+          restore.push({ p, life: p.life });
+          p.life = p.life * (age / p._fadeInMs);
+        }
+      }
+    }
     FD.particles.forEach(p => {
       if (!!p.fg !== !!isFg) return;
       const t = p.life / p.maxLife;
@@ -571,6 +585,8 @@
       }
     });
     ctx.globalAlpha = 1;
+    // Restore any scaled-down lives
+    for (const r of restore) r.p.life = r.life;
   };
 
   // --- Update particles (enhanced: trail tracking, depth switch, impact flashes) ---
