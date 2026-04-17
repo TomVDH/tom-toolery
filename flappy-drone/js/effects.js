@@ -193,6 +193,181 @@
     });
   };
 
+  // --- Lingering cap-core afterglow (screen-blended, breathing) ---
+  FD.drawCapAfterglow = function () {
+    if (!FD.NUKE_FX.afterglow || !FD.nukeActive) return;
+    const ctx = FD.ctx;
+    const { cY, capRx, elapsedMs } = FD.capCenter();
+    if (elapsedMs < 200) return;
+    const ramp  = Math.min(1, (elapsedMs - 200) / 1300);
+    const fadeT = elapsedMs > 12000 ? Math.min(1, (elapsedMs - 12000) / 2000) : 0;
+    const decay = Math.pow(1 - Math.min(1, elapsedMs / 13500), 1.4);
+    const baseA = ramp * decay * (1 - fadeT);
+    if (baseA < 0.005) return;
+    const breath = 0.85 + 0.15 * Math.sin(elapsedMs * 0.0014);
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    const outerR = capRx * 2.2;
+    const og = ctx.createRadialGradient(FD.nukeGx, cY - capRx * 0.05, 0,
+                                        FD.nukeGx, cY - capRx * 0.05, outerR);
+    og.addColorStop(0,    `hsla(34,100%,70%,${baseA * 0.5  * breath})`);
+    og.addColorStop(0.25, `hsla(28,100%,55%,${baseA * 0.28 * breath})`);
+    og.addColorStop(0.6,  `hsla(20, 90%,40%,${baseA * 0.10 * breath})`);
+    og.addColorStop(1,    `hsla(15, 80%,25%,0)`);
+    ctx.fillStyle = og;
+    ctx.beginPath(); ctx.arc(FD.nukeGx, cY - capRx * 0.05, outerR, 0, Math.PI * 2); ctx.fill();
+    const innerR = capRx * 0.85;
+    const ig = ctx.createRadialGradient(FD.nukeGx, cY - capRx * 0.1, 0,
+                                        FD.nukeGx, cY - capRx * 0.1, innerR);
+    ig.addColorStop(0,   `hsla(45,100%,82%,${baseA * 0.55 * breath})`);
+    ig.addColorStop(0.4, `hsla(35,100%,58%,${baseA * 0.28 * breath})`);
+    ig.addColorStop(1,   `hsla(25,100%,40%,0)`);
+    ctx.fillStyle = ig;
+    ctx.beginPath(); ctx.arc(FD.nukeGx, cY - capRx * 0.1, innerR, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  };
+
+  // --- Cap-trailing sky haze — wide warm fog band behind the rising cap ---
+  FD.drawCapTrailingHaze = function () {
+    if (!FD.NUKE_FX.trailHaze || !FD.nukeActive) return;
+    const ctx = FD.ctx;
+    const { cY, capRx, elapsedMs } = FD.capCenter();
+    if (elapsedMs < 1500) return;
+    const W = FD.W;
+    let intensity;
+    if (elapsedMs < 5000) intensity = (elapsedMs - 1500) / 3500;
+    else if (elapsedMs < 9000) intensity = 1;
+    else if (elapsedMs < 13000) intensity = 1 - (elapsedMs - 9000) / 4000;
+    else intensity = 0;
+    intensity = Math.max(0, Math.min(1, intensity));
+    if (intensity < 0.02) return;
+    const climb = (FD.nukeGy - cY) / FD.H;
+    const bandH = 140 + climb * 200;
+    const bandCY = cY + capRx * 0.15;
+    const bandTop = bandCY - bandH * 0.55;
+    const bandBot = bandCY + bandH * 0.45;
+    const hue = 22 + climb * 6;
+    const sat = 28 + climb * 12;
+    const lum = 28;
+    const peakA = 0.34 * intensity;
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    const grad = ctx.createLinearGradient(0, bandTop, 0, bandBot);
+    grad.addColorStop(0,   `hsla(${hue},${sat}%,${lum}%,0)`);
+    grad.addColorStop(0.4, `hsla(${hue},${sat}%,${lum + 4}%,${peakA * 0.7})`);
+    grad.addColorStop(0.6, `hsla(${hue},${sat}%,${lum + 6}%,${peakA})`);
+    grad.addColorStop(1,   `hsla(${hue},${sat - 8}%,${lum - 4}%,0)`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, bandTop, W, bandBot - bandTop);
+    const glowR = capRx * 4.0;
+    const glowH = bandH * 0.6;
+    const eg = ctx.createRadialGradient(FD.nukeGx, bandCY, 0,
+                                        FD.nukeGx, bandCY, glowR);
+    eg.addColorStop(0,   `hsla(${hue + 4},${sat + 8}%,${lum + 8}%,${peakA * 0.85})`);
+    eg.addColorStop(0.5, `hsla(${hue},${sat}%,${lum + 4}%,${peakA * 0.35})`);
+    eg.addColorStop(1,   `hsla(${hue - 4},${sat - 10}%,${lum}%,0)`);
+    ctx.fillStyle = eg;
+    ctx.save();
+    ctx.translate(FD.nukeGx, bandCY);
+    ctx.scale(1, glowH / glowR);
+    ctx.beginPath(); ctx.arc(0, 0, glowR, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    ctx.restore();
+  };
+
+  // --- Shockwave variants ('nova' handled inside drawNukeCloud; this draws the rest) ---
+  FD.drawShockwave = function () {
+    if (!FD.nukeActive) return;
+    const style = FD.NUKE_FX.shockStyle;
+    if (style === 'nova' || style === 'off') return;
+    const ctx = FD.ctx;
+    const elapsedMs = performance.now() - FD.nukeStart;
+    if (elapsedMs < 80 || elapsedMs > 3800) return;
+    const W = FD.W, H = FD.H;
+    const gx = FD.nukeGx, gy = FD.nukeGy;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+
+    if (style === 'harmonic') {
+      [{ off: 0, peak: 0.55 }, { off: 220, peak: 0.32 }].forEach(r => {
+        const local = elapsedMs - r.off;
+        if (local < 0 || local > 2800) return;
+        const t = local / 2800;
+        const radius = t * Math.max(W, H) * 0.95;
+        const a = (1 - t) * r.peak;
+        ctx.strokeStyle = `rgba(255,210,140,${a})`;
+        ctx.lineWidth = 2 + (1 - t) * 18;
+        ctx.beginPath(); ctx.arc(gx, gy, radius, Math.PI, 0); ctx.stroke();
+      });
+    } else if (style === 'pulse') {
+      const t = Math.min(1, (elapsedMs - 80) / 2200);
+      const radius = t * Math.max(W, H) * 1.0;
+      const a = (1 - t * t) * 0.6;
+      const g = ctx.createRadialGradient(gx, gy, radius * 0.55, gx, gy, radius);
+      g.addColorStop(0, `rgba(255,180,80,0)`);
+      g.addColorStop(0.7, `rgba(255,150,60,${a * 0.6})`);
+      g.addColorStop(1.0, `rgba(255,120,40,0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(gx, gy, radius, Math.PI, 0); ctx.fill();
+    } else if (style === 'refraction') {
+      const t = Math.min(1, (elapsedMs - 80) / 2400);
+      const radius = t * Math.max(W, H) * 0.95;
+      const bandW = 26 + (1 - t) * 24;
+      const a = (1 - t) * 0.7;
+      ctx.strokeStyle = `rgba(255,235,200,${a})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(gx, gy, radius, Math.PI, 0); ctx.stroke();
+      ctx.strokeStyle = `rgba(180,200,230,${a * 0.35})`;
+      ctx.lineWidth = bandW;
+      ctx.beginPath(); ctx.arc(gx, gy, Math.max(0, radius - bandW * 0.6), Math.PI, 0); ctx.stroke();
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.strokeStyle = `rgba(40,30,20,${a * 0.45})`;
+      ctx.lineWidth = bandW * 0.7;
+      ctx.beginPath(); ctx.arc(gx, gy, Math.max(0, radius - bandW * 1.3), Math.PI, 0); ctx.stroke();
+    } else if (style === 'combo') {
+      // Phase 1 — refraction snap (~750 ms, alpha cap 0.50)
+      if (elapsedMs >= 80 && elapsedMs <= 900) {
+        const t1 = Math.min(1, (elapsedMs - 80) / 750);
+        const radius = t1 * Math.max(W, H) * 0.95;
+        const bandW = 22 + (1 - t1) * 20;
+        const a = (1 - t1 * t1) * 0.50;
+        ctx.strokeStyle = `rgba(255,235,200,${a})`;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(gx, gy, radius, Math.PI, 0); ctx.stroke();
+        ctx.strokeStyle = `rgba(180,200,230,${a * 0.35})`;
+        ctx.lineWidth = bandW;
+        ctx.beginPath(); ctx.arc(gx, gy, Math.max(0, radius - bandW * 0.55), Math.PI, 0); ctx.stroke();
+        ctx.save();
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.strokeStyle = `rgba(40,30,20,${a * 0.5})`;
+        ctx.lineWidth = bandW * 0.7;
+        ctx.beginPath(); ctx.arc(gx, gy, Math.max(0, radius - bandW * 1.25), Math.PI, 0); ctx.stroke();
+        ctx.restore();
+      }
+      // Phase 2 — soft warm pulse bloom (500–3800 ms)
+      if (elapsedMs >= 500 && elapsedMs <= 3800) {
+        const t2 = Math.min(1, (elapsedMs - 500) / 3200);
+        const radius = t2 * Math.max(W, H) * 1.05;
+        const a = (1 - t2 * t2) * 0.65;
+        const g = ctx.createRadialGradient(gx, gy, radius * 0.55, gx, gy, radius);
+        g.addColorStop(0,   `rgba(255,180,80,0)`);
+        g.addColorStop(0.6, `rgba(255,150,60,${a * 0.55})`);
+        g.addColorStop(1,   `rgba(255,120,40,0)`);
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(gx, gy, radius, Math.PI, 0); ctx.fill();
+        const innerA = a * 0.4;
+        const ig = ctx.createRadialGradient(gx, gy, 0, gx, gy, radius * 0.5);
+        ig.addColorStop(0, `rgba(255,200,120,${innerA})`);
+        ig.addColorStop(1, `rgba(255,140,60,0)`);
+        ctx.fillStyle = ig;
+        ctx.beginPath(); ctx.arc(gx, gy, radius * 0.5, Math.PI, 0); ctx.fill();
+      }
+    }
+
+    ctx.restore();
+  };
+
   // --- Thrust particles ---
   FD.spawnThrust = function (droneX, droneY) {
     // Hot exhaust particles
