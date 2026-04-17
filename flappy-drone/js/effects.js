@@ -7,6 +7,33 @@
 (function () {
   const FD = window.FD || (window.FD = {});
 
+  // --- Nuke VFX config (shared with previews/33-nuke-vfx.html lab) ---
+  // Defaults ship the full NOVA baseline: all layers ON except godRays
+  // (stylistic, left OFF in lab) and novaShock (mutually exclusive with
+  // the 'combo' shockwave default — auto-managed when shockStyle changes).
+  FD.NUKE_FX = {
+    // Stage
+    whiteFlash: true, godRays: false, haze: true, trailHaze: true,
+    // Shockwave — mutually exclusive with novaShock
+    shockStyle: 'combo', // 'nova' | 'harmonic' | 'pulse' | 'refraction' | 'combo' | 'off'
+    novaShock: false,    // auto-managed: true iff shockStyle === 'nova'
+    // Stem
+    midStem: true, wideStem: true, stemCore: true,
+    // Cap
+    capEdge: true, hotspots: true, cloudBands: true,
+    // Ground
+    baseFire: true, groundFires: true, baseGlow: true, baseRing: true,
+    // Extra paired-particle layers (lifted from lab 33)
+    capArcs: true, afterglow: true, fallout: true,
+    // Per-system fade-in durations (ms)
+    fadeInArcsMs:    400,
+    fadeInFalloutMs: 2200
+  };
+
+  // --- Paired-particle arrays (used by spawnFallout / spawnCapArcs) ---
+  FD.FALLOUT  = [];
+  FD.CAP_ARCS = [];
+
   // --- Thrust particles ---
   FD.spawnThrust = function (droneX, droneY) {
     // Hot exhaust particles
