@@ -593,12 +593,39 @@
   FD.updateParticles = function () {
     var groundY = FD.H - FD.GROUND_H;
     var flashes = [];
-    FD.particles.forEach(p => {
-      // Depth switch: pop to foreground mid-flight
-      if (p.switchZ && p.life < p.maxLife * 0.65) {
-        p.fg = true;
+    var toFlash = [];
+    // Pre-pass: tag + flash detection (must run before life-- decrements)
+    FD.particles.forEach(function (p) {
+      // Tag newly-spawned mid-stem streaks once. ~12% become camera-bound:
+      // slower lateral motion, forward bias, radius grows with age to
+      // simulate approaching the lens. Switched to foreground to render
+      // on top of the city.
+      if (p.streak && p.hasTrail && !p.fg && !p._tagged) {
+        p._tagged = true;
+        if (Math.random() < 0.12) {
+          p._zoom = true;
+          p._baseR = p.r;
+          p.vx *= 0.35;
+          p.vy *= 0.6;
+          p.fg  = true;
+        }
       }
-      // Ground impact flash — foreground debris hitting ground
+      // End-of-life bright flash — ~55% of streaks pop into a burst.
+      if (p.streak && p.hasTrail && p.life <= 1 && !p._flashed) {
+        p._flashed = true;
+        if (Math.random() < 0.55) toFlash.push({ x: p.x, y: p.y, fg: p.fg });
+      }
+    });
+    // Grow camera-bound particles (linear with age, up to ~4×)
+    FD.particles.forEach(function (p) {
+      if (p._zoom && p._baseR) {
+        const age = 1 - (p.life / p.maxLife);
+        p.r = p._baseR * (1 + age * 3.0);
+      }
+    });
+    // Main update (preserves existing ground-flash behaviour)
+    FD.particles.forEach(p => {
+      if (p.switchZ && p.life < p.maxLife * 0.65) p.fg = true;
       if (p.fg && p.y > groundY - 10 && p.life > 15 && Math.random() < 0.02) {
         p.life = 0;
         flashes.push({
@@ -607,7 +634,6 @@
           hue: 35, sat: 100, lum: 90, glow: true, fg: true
         });
       }
-      // Trail history
       if (p.hasTrail) {
         if (!p.trailList) p.trailList = [];
         p.trailList.push({ x: p.x, y: p.y });
@@ -621,6 +647,43 @@
     });
     FD.particles = FD.particles.filter(p => p.life > 0);
     flashes.forEach(function (f) { FD.particles.push(f); });
+
+    // End-of-life burst spawns for flagged streaks
+    for (const f of toFlash) {
+      // Hot white-yellow core — the initial pop
+      FD.particles.push({
+        x: f.x, y: f.y, vx: 0, vy: -0.03,
+        life: 14, maxLife: 14, r: 20 + Math.random() * 8,
+        hue: 46, sat: 100, lum: 98, glow: true, fg: f.fg
+      });
+      // Secondary warm halo that lingers a beat longer
+      FD.particles.push({
+        x: f.x, y: f.y, vx: 0, vy: 0,
+        life: 22, maxLife: 22, r: 40 + Math.random() * 10,
+        hue: 32, sat: 100, lum: 68, glow: true, fg: f.fg
+      });
+      // Quick bright snap (short-lived pinpoint highlight)
+      FD.particles.push({
+        x: f.x, y: f.y, vx: 0, vy: 0,
+        life: 4, maxLife: 4, r: 8,
+        hue: 55, sat: 80, lum: 100, glow: true, fg: f.fg
+      });
+      // Spark shower
+      const sparks = 6 + ((Math.random() * 4) | 0);
+      for (let s = 0; s < sparks; s++) {
+        const a = Math.random() * Math.PI * 2;
+        const spd = 0.45 + Math.random() * 0.75;
+        FD.particles.push({
+          x: f.x, y: f.y,
+          vx: Math.cos(a) * spd, vy: Math.sin(a) * spd,
+          life: 14 + Math.random() * 8, maxLife: 22,
+          r: 1.2 + Math.random() * 1.0,
+          hue: 42 + Math.random() * 10, sat: 100, lum: 85,
+          damping: 0.94, gravity: 0.004,
+          streak: true, fg: f.fg
+        });
+      }
+    }
   };
 
   // --- Fireworks update (does NOT auto-spawn; callers handle that) ---
